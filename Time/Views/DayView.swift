@@ -39,40 +39,6 @@ struct DayView: View {
     }
     
     var body: some View {
-        VStack(spacing: 0) {
-            // Header with Zoom Controls
-            HStack {
-                Text(date, format: .dateTime.weekday(.wide).day().month())
-                    .font(.title2)
-                    .fontWeight(.bold)
-                
-                Spacer()
-                
-                HStack(spacing: 12) {
-                    Button { withAnimation { hourHeight = max(30, hourHeight - 10) } } label: {
-                        Image(systemName: "minus.magnifyingglass")
-                    }
-                    .disabled(hourHeight <= 30)
-                    
-                    Slider(value: $hourHeight, in: 30...200)
-                        .frame(width: 100)
-                    
-                    Button { withAnimation { hourHeight = min(200, hourHeight + 10) } } label: {
-                        Image(systemName: "plus.magnifyingglass")
-                    }
-                    .disabled(hourHeight >= 200)
-                }
-                .padding(.horizontal)
-                
-                Text("Total: \(totalTimeFormatted)")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-            }
-            .padding()
-            .background(.ultraThinMaterial)
-            
-            Divider()
-            
             ScrollViewReader { proxy in
                 ScrollView {
                     ZStack(alignment: .topLeading) {
@@ -96,19 +62,42 @@ struct DayView: View {
                     .frame(maxWidth: .infinity)
                     .padding(.leading, 60) // Space for hour labels
                 }
+                .toolbar {
+                    ToolbarItemGroup(placement: .secondaryAction) {
+                        Button { withAnimation { hourHeight = max(30, hourHeight - 10) } } label: {
+                            Image(systemName: "minus.magnifyingglass")
+                        }
+                        .disabled(hourHeight <= 30)
+                        
+                        Slider(value: $hourHeight, in: 30...200)
+                            .frame(width: 80)
+                        
+                        Button { withAnimation { hourHeight = min(200, hourHeight + 10) } } label: {
+                            Image(systemName: "plus.magnifyingglass")
+                        }
+                        .disabled(hourHeight >= 200)
+                        
+                        Divider()
+                        
+                        Text("Total: \(totalTimeFormatted)")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
                 .onAppear {
                     // Scroll to current hour or 08:00
                     let hour = Calendar.current.component(.hour, from: Date())
                     proxy.scrollTo(max(0, hour - 1), anchor: .top)
                 }
             }
-        }
-        .sheet(isPresented: $showingEditSheet) {
-            if let entry = selectedEntry {
-                EditTimeEntryView(entry: entry)
+            .background(Color(NSColor.textBackgroundColor))
+            .sheet(isPresented: $showingEditSheet) {
+                if let entry = selectedEntry {
+                    EditTimeEntryView(entry: entry)
+                        .frame(minWidth: 400, minHeight: 450)
+                }
             }
         }
-    }
     
     private var totalTimeFormatted: String {
         let totalSeconds = filteredTimeEntries.reduce(0) { $0 + $1.duration }
@@ -141,13 +130,14 @@ struct TimelineGrid: View {
             ForEach(0..<24) { hour in
                 HStack(alignment: .top, spacing: 0) {
                     Text(String(format: "%02d:00", hour))
-                        .font(.caption2.monospacedDigit())
-                        .foregroundColor(.secondary)
+                        .font(.system(size: 10, weight: .medium, design: .monospaced))
+                        .foregroundColor(.secondary.opacity(0.7))
                         .frame(width: 50, alignment: .trailing)
                         .offset(x: -55, y: -7)
                     
                     VStack(spacing: 0) {
                         Divider()
+                            .opacity(0.3)
                         Spacer()
                     }
                 }
@@ -177,14 +167,16 @@ struct CurrentTimeIndicator: View {
         HStack(spacing: 0) {
             Circle()
                 .fill(.red)
-                .frame(width: 8, height: 8)
-                .offset(x: -4)
+                .frame(width: 6, height: 6)
+                .shadow(radius: 1)
+                .offset(x: -3)
             
             Rectangle()
                 .fill(.red)
-                .frame(height: 2)
+                .frame(height: 1)
+                .opacity(0.8)
         }
-        .offset(y: yOffset - 1)
+        .offset(y: yOffset - 0.5)
         .onReceive(timer) { _ in now = Date() }
     }
 }
@@ -207,9 +199,15 @@ struct EntryLayoutView: View {
                     widthPercent: layout.widthPercent,
                     offsetXPercent: layout.offsetXPercent
                 )
-                .onTapGesture { onSelect(layout.entry) }
+                .onTapGesture { 
+                    withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                        onSelect(layout.entry)
+                    }
+                }
+                .transition(.asymmetric(insertion: .opacity.combined(with: .scale(scale: 0.9)), removal: .opacity))
             }
         }
+        .animation(.spring(), value: entries)
     }
     
     private struct EntryLayout {
@@ -294,27 +292,54 @@ struct TimeEntryBlock: View {
         GeometryReader { geo in
             let y = calculateY()
             let h = calculateHeight()
+            let baseColor = entry.isActive ? AppTheme.Colors.activeTimer : AppTheme.Colors.completedTimer
             
             VStack(alignment: .leading, spacing: 2) {
-                Text(entry.taskDescription)
-                    .font(.system(size: 12, weight: .bold))
-                    .lineLimit(1)
+                HStack(alignment: .top) {
+                    Text(entry.taskDescription)
+                        .font(.system(size: 11, weight: .bold))
+                        .lineLimit(2)
+                    
+                    Spacer()
+                    
+                    if entry.isActive {
+                        Image(systemName: "timer")
+                            .font(.system(size: 10))
+                            .symbolEffect(.pulse)
+                    }
+                }
                 
                 Text(entry.formattedDuration)
-                    .font(.system(size: 10))
+                    .font(.system(size: 10, design: .monospaced))
                     .opacity(0.8)
             }
-            .padding(8)
+            .padding(10)
             .frame(width: geo.size.width * widthPercent, height: h + resizeOffset)
             .background(
-                RoundedRectangle(cornerRadius: 6)
-                    .fill(entry.isActive ? Color.blue.opacity(0.3) : Color.green.opacity(0.3))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 6)
-                            .stroke(entry.isActive ? Color.blue : Color.green, lineWidth: 1.5)
-                    )
+                RoundedRectangle(cornerRadius: AppTheme.cardCornerRadius)
+                    .fill(AppTheme.Gradients.activeGradient(for: baseColor))
+                    .shadow(color: Color.black.opacity(0.1), radius: 2, x: 0, y: 1)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: AppTheme.cardCornerRadius)
+                    .strokeBorder(baseColor.opacity(0.5), lineWidth: 1)
             )
             .offset(x: geo.size.width * offsetXPercent, y: y + dragOffset)
+            .contextMenu {
+                Button("Edit") {
+                    // Selection handled by parent tap
+                }
+                
+                Button("Duplicate") {
+                    duplicateEntry()
+                }
+                
+                Divider()
+                
+                Button("Delete", role: .destructive) {
+                    deleteEntry()
+                }
+            }
             .gesture(
                 DragGesture()
                     .onChanged { value in
@@ -329,7 +354,7 @@ struct TimeEntryBlock: View {
                 // Resize Handle
                 Rectangle()
                     .fill(Color.clear)
-                    .frame(height: 10)
+                    .frame(height: 12)
                     .contentShape(Rectangle())
                     .cursor(.resizeUpDown)
                     .gesture(
@@ -344,6 +369,19 @@ struct TimeEntryBlock: View {
                     )
             }
         }
+    }
+    
+    private func deleteEntry() {
+        modelContext.delete(entry)
+        try? modelContext.save()
+    }
+    
+    private func duplicateEntry() {
+        let newEntry = TimeEntry(taskDescription: entry.taskDescription, startTime: entry.startTime)
+        newEntry.endTime = entry.endTime
+        newEntry.isActive = false
+        modelContext.insert(newEntry)
+        try? modelContext.save()
     }
     
     private func calculateY() -> CGFloat {

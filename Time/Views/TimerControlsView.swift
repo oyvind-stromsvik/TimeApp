@@ -10,35 +10,75 @@ struct TimerControlsView: View {
     var body: some View {
         VStack(spacing: 0) {
             // Quick Start Field
-            HStack {
-                TextField("What are you working on?", text: $newTimerDescription)
-                    .textFieldStyle(.roundedBorder)
-                    .onSubmit(startTimer)
-                
-                Button(action: startTimer) {
-                    Image(systemName: "play.circle.fill")
-                        .font(.title2)
-                        .foregroundColor(.blue)
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Track New Task")
+                    .font(.caption)
+                    .fontWeight(.semibold)
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal, 16)
+                    .padding(.top, 16)
+
+                HStack(spacing: 8) {
+                    TextField("What are you working on?", text: $newTimerDescription)
+                        .textFieldStyle(.plain)
+                        .padding(8)
+                        .background(Color(NSColor.controlBackgroundColor))
+                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 8)
+                                .stroke(Color.secondary.opacity(0.2), lineWidth: 1)
+                        )
+                        .onSubmit(startTimer)
+                    
+                    Button(action: startTimer) {
+                        Image(systemName: "play.fill")
+                            .font(.system(size: 14, weight: .bold))
+                            .foregroundColor(.white)
+                            .frame(width: 32, height: 32)
+                            .background(newTimerDescription.isEmpty ? Color.gray : Color.blue)
+                            .clipShape(Circle())
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(newTimerDescription.isEmpty)
                 }
-                .buttonStyle(.plain)
-                .disabled(newTimerDescription.isEmpty)
+                .padding(.horizontal, 16)
+                .padding(.bottom, 16)
             }
-            .padding()
             
             Divider()
             
             if activeEntries.isEmpty {
-                ContentUnavailableView("No Active Timers", systemImage: "timer", description: Text("Start a task to begin tracking time."))
-                    .frame(maxHeight: .infinity)
+                VStack(spacing: 12) {
+                    Image(systemName: "timer")
+                        .font(.system(size: 32))
+                        .foregroundStyle(.secondary.opacity(0.5))
+                    Text("No Active Timers")
+                        .font(.headline)
+                        .foregroundStyle(.secondary)
+                    Text("Start a task to begin tracking time.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary.opacity(0.7))
+                        .multilineTextAlignment(.center)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .padding()
             } else {
                 List {
-                    ForEach(activeEntries) { entry in
-                        ActiveTimerRow(entry: entry)
+                    Section {
+                        ForEach(activeEntries) { entry in
+                            ActiveTimerRow(entry: entry)
+                        }
+                    } header: {
+                        Text("Active Tasks")
+                            .font(.caption)
+                            .fontWeight(.bold)
+                            .foregroundStyle(.secondary)
                     }
                 }
                 .listStyle(.sidebar)
             }
         }
+        .background(AppTheme.Colors.sidebarBackground)
     }
     
     private func startTimer() {
@@ -57,29 +97,40 @@ struct ActiveTimerRow: View {
     let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
     
     var body: some View {
-        HStack {
-            VStack(alignment: .leading, spacing: 2) {
+        HStack(spacing: 12) {
+            VStack(alignment: .leading, spacing: 4) {
                 Text(entry.taskDescription)
                     .font(.subheadline)
                     .fontWeight(.medium)
                 
-                Text(entry.formattedDuration)
-                    .font(.caption.monospacedDigit())
-                    .foregroundColor(.blue)
+                HStack(spacing: 4) {
+                    Circle()
+                        .fill(.blue)
+                        .frame(width: 6, height: 6)
+                    Text(entry.formattedDuration)
+                        .font(.system(.caption, design: .monospaced))
+                        .foregroundColor(.blue)
+                }
             }
             
             Spacer()
             
             Button {
-                entry.stop()
-                try? modelContext.save()
+                withAnimation {
+                    entry.stop()
+                    try? modelContext.save()
+                }
             } label: {
-                Image(systemName: "stop.circle.fill")
-                    .foregroundColor(.red)
+                Image(systemName: "stop.fill")
+                    .font(.system(size: 10, weight: .bold))
+                    .foregroundColor(.white)
+                    .frame(width: 24, height: 24)
+                    .background(Color.red.gradient)
+                    .clipShape(Circle())
             }
             .buttonStyle(.plain)
         }
-        .padding(.vertical, 4)
+        .padding(.vertical, 8)
         .onReceive(timer) { _ in
             tick = Date()
         }
