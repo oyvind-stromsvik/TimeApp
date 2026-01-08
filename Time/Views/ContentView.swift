@@ -9,10 +9,10 @@ struct ContentView: View {
     var body: some View {
         NavigationSplitView(columnVisibility: $columnVisibility) {
             TimerControlsView()
-                .navigationSplitViewColumnWidth(min: 250, ideal: AppTheme.sidebarWidth, max: 400)
+                .navigationSplitViewColumnWidth(min: 100, ideal: AppTheme.sidebarWidth, max: 400)
         } detail: {
             DayView(date: selectedDate)
-                .frame(minWidth: 600)
+                .frame(minWidth: 100, idealWidth: AppTheme.mainWidth, maxWidth: .infinity)
                 .toolbar {
                     ToolbarItem(placement: .principal) {
                         DatePicker("", selection: $selectedDate, displayedComponents: [.date])

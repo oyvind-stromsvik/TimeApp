@@ -43,16 +43,14 @@ struct EditTimeEntryView: View {
                 }
                 .buttonStyle(.plain)
             }
-            .padding(.horizontal, 20)
-            .padding(.top, 20)
-            .padding(.bottom, 15)
+            .padding(10)
             
             Divider().opacity(0.5)
             
-            ScrollView {
-                VStack(spacing: 24) {
+            ViewThatFits {
+                VStack(spacing: 20) {
                     // Task Description
-                    VStack(alignment: .leading, spacing: 8) {
+                    VStack(alignment: .leading, spacing: 5) {
                         Label("DESCRIPTION", systemImage: "pencil.line")
                             .font(.system(size: 10, weight: .bold))
                             .foregroundColor(.secondary)
@@ -60,74 +58,60 @@ struct EditTimeEntryView: View {
                         TextField("What are you working on?", text: $taskDescription)
                             .textFieldStyle(.plain)
                             .font(.system(size: 15))
-                            .padding(12)
+                            .padding(10)
                             .background(AppTheme.Colors.cardBackground)
-                            .cornerRadius(8)
+                            .cornerRadius(5)
                             .overlay(
-                                RoundedRectangle(cornerRadius: 8)
+                                RoundedRectangle(cornerRadius: 5)
                                     .stroke(Color.secondary.opacity(0.1), lineWidth: 1)
                             )
                     }
                     
                     // Time Range
-                    VStack(alignment: .leading, spacing: 12) {
-                        Label("TIME RANGE", systemImage: "clock")
-                            .font(.system(size: 10, weight: .bold))
-                            .foregroundColor(.secondary)
-                        
-                        HStack(spacing: 12) {
-                            DatePicker("", selection: $startTime, displayedComponents: .hourAndMinute)
-                                .labelsHidden()
-                                .datePickerStyle(.stepperField)
-                                .frame(maxWidth: .infinity)
-                                .onChange(of: startTime) { _, _ in updateDurationFromTimes() }
-                                .padding(8)
-                                .background(AppTheme.Colors.cardBackground)
-                                .cornerRadius(6)
-                                .overlay(RoundedRectangle(cornerRadius: 6).stroke(Color.secondary.opacity(0.1), lineWidth: 1))
-                            
-                            Image(systemName: "arrow.right")
-                                .font(.system(size: 12, weight: .bold))
-                                .foregroundColor(.secondary.opacity(0.5))
-                            
-                            DatePicker("", selection: $endTime, displayedComponents: .hourAndMinute)
-                                .labelsHidden()
-                                .datePickerStyle(.stepperField)
-                                .frame(maxWidth: .infinity)
-                                .disabled(isActive)
-                                .onChange(of: endTime) { _, _ in updateDurationFromTimes() }
-                                .padding(8)
-                                .background(isActive ? Color.secondary.opacity(0.05) : AppTheme.Colors.cardBackground)
-                                .cornerRadius(6)
-                                .overlay(RoundedRectangle(cornerRadius: 6).stroke(Color.secondary.opacity(0.1), lineWidth: 1))
-                        }
-                        
-                        DatePicker("Date", selection: $startTime, displayedComponents: .date)
-                            .font(.system(size: 13))
-                            .foregroundStyle(AppTheme.Colors.textSecondary)
-                    }
-                    
-                    // Duration Section
-                    VStack(alignment: .leading, spacing: 8) {
-                        Label("DURATION", systemImage: "hourglass")
+                    VStack(alignment: .leading, spacing: 5) {
+                        Label("DURATION", systemImage: "clock")
                             .font(.system(size: 10, weight: .bold))
                             .foregroundColor(.secondary)
                         
                         TextField("0:00:00", text: $durationString)
                             .textFieldStyle(.plain)
                             .font(.system(size: 20, weight: .medium, design: .monospaced))
-                            .padding(12)
+                            .padding(10)
                             .background(AppTheme.Colors.cardBackground)
-                            .cornerRadius(8)
+                            .cornerRadius(5)
                             .overlay(
-                                RoundedRectangle(cornerRadius: 8)
+                                RoundedRectangle(cornerRadius: 5)
                                     .stroke(Color.secondary.opacity(0.1), lineWidth: 1)
                             )
                             .onChange(of: durationString) { _, newValue in
                                 updateTimesFromDuration()
                             }
+                        HStack(spacing: 10) {
+                            DatePicker("", selection: $startTime, displayedComponents: .hourAndMinute)
+                                .datePickerStyle(.stepperField)
+                                .frame(maxWidth: .infinity)
+                                .onChange(of: startTime) { _, _ in updateDurationFromTimes() }
+                                .padding(5)
+                                .background(AppTheme.Colors.cardBackground)
+                                .cornerRadius(5)
+                                .overlay(RoundedRectangle(cornerRadius: 5).stroke(Color.secondary.opacity(0.1), lineWidth: 1))
+                            
+                            Image(systemName: "arrow.right")
+                                .font(.system(size: 13, weight: .bold))
+                                .foregroundColor(.secondary.opacity(0.5))
+                            
+                            DatePicker("", selection: $endTime, displayedComponents: .hourAndMinute)
+                                .datePickerStyle(.stepperField)
+                                .frame(maxWidth: .infinity)
+                                .disabled(isActive)
+                                .onChange(of: endTime) { _, _ in updateDurationFromTimes() }
+                                .padding(5)
+                                .background(isActive ? Color.secondary.opacity(0.05) : AppTheme.Colors.cardBackground)
+                                .cornerRadius(5)
+                                .overlay(RoundedRectangle(cornerRadius: 5).stroke(Color.secondary.opacity(0.1), lineWidth: 1))
+                        }
                     }
-                    
+       
                     Toggle(isOn: $isActive) {
                         HStack {
                             Image(systemName: "timer")
@@ -137,49 +121,42 @@ struct EditTimeEntryView: View {
                         }
                     }
                     .toggleStyle(.switch)
-                    .scaleEffect(0.8)
                     .frame(maxWidth: .infinity, alignment: .leading)
                 }
-                .padding(20)
+                .padding(10)
             }
             
             Divider().opacity(0.5)
             
             // Footer Buttons
-            HStack(spacing: 12) {
+            HStack(spacing: 50) {
                 Button {
                     deleteEntry()
                 } label: {
                     Label("Delete", systemImage: "trash")
-                        .font(.system(size: 13, weight: .medium))
                         .foregroundColor(.red)
-                        .padding(.vertical, 8)
-                        .padding(.horizontal, 16)
-                        .background(Color.red.opacity(0.1))
-                        .cornerRadius(8)
+                        .padding(.vertical, 10)
+                        .padding(.horizontal, 20)
+                        .cornerRadius(10)
                 }
                 .buttonStyle(.plain)
-                
-                Spacer()
                 
                 Button {
                     saveChanges()
                 } label: {
                     Text("Save Changes")
-                        .font(.system(size: 13, weight: .semibold))
                         .foregroundColor(.white)
-                        .padding(.vertical, 8)
-                        .padding(.horizontal, 24)
+                        .padding(.vertical, 10)
+                        .padding(.horizontal, 20)
                         .background(AppTheme.Gradients.accentGradient)
-                        .cornerRadius(8)
-                        .shadow(color: Color.blue.opacity(0.2), radius: 4, x: 0, y: 2)
+                        .cornerRadius(10)
                 }
                 .buttonStyle(.plain)
             }
-            .padding(20)
+            .padding(10)
             .background(Color.secondary.opacity(0.02))
         }
-        .frame(width: 380, height: 520)
+        .frame(width: 300)
         .background(AppTheme.Colors.background)
     }
     

@@ -4,6 +4,7 @@ struct AppTheme {
     static let cornerRadius: CGFloat = 12
     static let cardCornerRadius: CGFloat = 10
     static let sidebarWidth: CGFloat = 280
+    static let mainWidth: CGFloat = 280
     
     struct Colors {
         static let accent = Color.blue
