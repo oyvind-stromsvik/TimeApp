@@ -12,13 +12,6 @@ struct ContentView: View {
                 TimerControlsView()
             }
             .navigationSplitViewColumnWidth(min: 250, ideal: 300)
-            .toolbar {
-                ToolbarItem(placement: .navigation) {
-                    Button(action: toggleSidebar) {
-                        Label("Toggle Sidebar", systemImage: "sidebar.left")
-                    }
-                }
-            }
         } detail: {
             DayView(date: selectedDate)
                 .frame(minWidth: 600)
@@ -40,15 +33,14 @@ struct ContentView: View {
                 }
         }
     }
-    
-    private func toggleSidebar() {
-        withAnimation {
-            columnVisibility = columnVisibility == .detailOnly ? .all : .detailOnly
-        }
-    }
 }
 
 #Preview {
-    ContentView()
-        .modelContainer(for: TimeEntry.self, inMemory: true)
+    let config = ModelConfiguration(isStoredInMemoryOnly: true)
+    let container = try! ModelContainer(for: TimeEntry.self, configurations: config)
+    let manager = TimerManager(modelContext: container.mainContext)
+    
+    return ContentView()
+        .modelContainer(container)
+        .environment(manager)
 }

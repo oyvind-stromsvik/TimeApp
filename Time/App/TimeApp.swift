@@ -3,22 +3,28 @@ import SwiftData
 
 @main
 struct TimeApp: App {
-    var sharedModelContainer: ModelContainer = {
+    let sharedModelContainer: ModelContainer
+    let timerManager: TimerManager
+
+    init() {
         let schema = Schema([
             TimeEntry.self,
         ])
         let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
 
         do {
-            return try ModelContainer(for: schema, configurations: [modelConfiguration])
+            let container = try ModelContainer(for: schema, configurations: [modelConfiguration])
+            self.sharedModelContainer = container
+            self.timerManager = TimerManager(modelContext: container.mainContext)
         } catch {
             fatalError("Could not create ModelContainer: \(error)")
         }
-    }()
+    }
 
     var body: some Scene {
         WindowGroup {
             ContentView()
+                .environment(timerManager)
         }
         .modelContainer(sharedModelContainer)
     }

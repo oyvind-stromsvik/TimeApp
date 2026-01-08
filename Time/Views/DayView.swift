@@ -5,6 +5,7 @@ struct DayView: View {
     let date: Date
     @Query private var timeEntries: [TimeEntry]
     @Environment(\.modelContext) private var modelContext
+    @Environment(TimerManager.self) private var timerManager
     
     // Zoom/Scale: Height of one hour in points
     @State private var hourHeight: CGFloat = 60
@@ -100,6 +101,8 @@ struct DayView: View {
         }
     
     private var totalTimeFormatted: String {
+        // Use lastTick to ensure this re-calculates every second if there are active timers
+        _ = timerManager.lastTick
         let totalSeconds = filteredTimeEntries.reduce(0) { $0 + $1.duration }
         let hours = Int(totalSeconds) / 3600
         let minutes = Int(totalSeconds) % 3600 / 60
@@ -155,10 +158,10 @@ struct TimelineGrid: View {
 
 struct CurrentTimeIndicator: View {
     let hourHeight: CGFloat
-    @State private var now = Date()
-    let timer = Timer.publish(every: 60, on: .main, in: .common).autoconnect()
+    @Environment(TimerManager.self) private var timerManager
     
     var body: some View {
+        let now = timerManager.lastTick
         let calendar = Calendar.current
         let hour = CGFloat(calendar.component(.hour, from: now))
         let minute = CGFloat(calendar.component(.minute, from: now))
@@ -177,7 +180,6 @@ struct CurrentTimeIndicator: View {
                 .opacity(0.8)
         }
         .offset(y: yOffset - 0.5)
-        .onReceive(timer) { _ in now = Date() }
     }
 }
 
@@ -285,11 +287,15 @@ struct TimeEntryBlock: View {
     let offsetXPercent: CGFloat
     
     @Environment(\.modelContext) private var modelContext
+    @Environment(TimerManager.self) private var timerManager
     @State private var dragOffset: CGFloat = 0
     @State private var resizeOffset: CGFloat = 0
     
     var body: some View {
         GeometryReader { geo in
+            // Observe lastTick to refresh active timers
+            let _ = entry.isActive ? timerManager.lastTick : .distantPast
+            
             let y = calculateY()
             let h = calculateHeight()
             let baseColor = entry.isActive ? AppTheme.Colors.activeTimer : AppTheme.Colors.completedTimer
@@ -429,6 +435,11 @@ extension View {
 }
 
 #Preview {
-    DayView(date: Date())
-        .modelContainer(for: TimeEntry.self, inMemory: true)
-} 
+    let config = ModelConfiguration(isStoredInMemoryOnly: true)
+    let container = try! ModelContainer(for: TimeEntry.self, configurations: config)
+    let manager = TimerManager(modelContext: container.mainContext)
+    
+    return DayView(date: Date())
+        .modelContainer(container)
+        .environment(manager)
+}

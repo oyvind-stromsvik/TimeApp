@@ -93,10 +93,10 @@ struct TimerControlsView: View {
 struct ActiveTimerRow: View {
     @Bindable var entry: TimeEntry
     @Environment(\.modelContext) private var modelContext
-    @State private var tick = Date()
-    let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
+    @Environment(TimerManager.self) private var timerManager
     
     var body: some View {
+        let _ = timerManager.lastTick
         HStack(spacing: 12) {
             VStack(alignment: .leading, spacing: 4) {
                 Text(entry.taskDescription)
@@ -131,13 +131,15 @@ struct ActiveTimerRow: View {
             .buttonStyle(.plain)
         }
         .padding(.vertical, 8)
-        .onReceive(timer) { _ in
-            tick = Date()
-        }
     }
 }
 
 #Preview {
-    TimerControlsView()
-        .modelContainer(for: TimeEntry.self, inMemory: true)
-} 
+    let config = ModelConfiguration(isStoredInMemoryOnly: true)
+    let container = try! ModelContainer(for: TimeEntry.self, configurations: config)
+    let manager = TimerManager(modelContext: container.mainContext)
+    
+    return TimerControlsView()
+        .modelContainer(container)
+        .environment(manager)
+}

@@ -35,7 +35,7 @@ final class TimeEntry: Identifiable {
         self.taskDescription = taskDescription
         self.startTime = startTime
         self.endTime = nil
-        self.isActive = true
+        self.isActive = false
         self.hexColor = hexColor
     }
     
