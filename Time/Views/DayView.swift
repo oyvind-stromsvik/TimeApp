@@ -353,7 +353,7 @@ struct TimeEntryBlock: View {
         }
         .onHover { hovering in withAnimation(.easeInOut(duration: 0.2)) { isHovering = hovering } }
         .cursor(isHovering ? .pointingHand : .arrow)
-        .gesture(
+        .simultaneousGesture(
             DragGesture(minimumDistance: 4, coordinateSpace: .named("timeline"))
                 .onChanged { value in
                     if dragInitialStartTime == nil {
