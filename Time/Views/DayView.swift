@@ -63,32 +63,28 @@ struct DayView: View {
                 }
                 .coordinateSpace(name: "timeline")
                 .frame(maxWidth: .infinity)
+                .padding(.top, hourHeight)
                 .padding(.leading, 64)
             }
             .toolbar {
                 ToolbarItemGroup(placement: .secondaryAction) {
-                    Button { withAnimation { hourHeight = max(40, hourHeight - 12) } } label: {
+                    Button { withAnimation { hourHeight = max(40, hourHeight - 20) } } label: {
                         Image(systemName: "minus.magnifyingglass")
                     }
                     .disabled(hourHeight <= 40)
-                    
+
                     Slider(value: $hourHeight, in: 40...240)
                         .frame(width: 100)
                     
-                    Button { withAnimation { hourHeight = min(240, hourHeight + 12) } } label: {
+                    Button { withAnimation { hourHeight = min(240, hourHeight + 20) } } label: {
                         Image(systemName: "plus.magnifyingglass")
                     }
                     .disabled(hourHeight >= 240)
                     
-                    Divider()
-                    
                     HStack(spacing: 4) {
-                        Image(systemName: "sum")
-                            .font(.caption2)
+                        Image(systemName: "clock")
                         Text(totalTimeFormatted)
-                            .font(.system(size: 11, weight: .bold, design: .monospaced))
                     }
-                    .foregroundStyle(.secondary)
                 }
             }
             .onAppear {
