@@ -1,92 +1,40 @@
-//
-//  ContentView.swift
-//  Time
-//
-//  Created by Øyvind Strømsvik on 29/06/2025.
-//
-
 import SwiftUI
 import SwiftData
 
 struct ContentView: View {
     @Environment(\.modelContext) private var modelContext
     @State private var selectedDate = Date()
-    @State private var showingDatePicker = false
     
     var body: some View {
         NavigationSplitView {
-            // Sidebar with timer controls
             VStack(spacing: 0) {
-                // Date selector
-                HStack {
-                    Button(action: { showingDatePicker = true }) {
-                        HStack {
-                            Text(selectedDate, format: .dateTime.day().month().year())
-                                .font(.headline)
-                            
-                            Image(systemName: "calendar")
-                                .font(.caption)
-                        }
-                    }
-                    .buttonStyle(.bordered)
+                // Header / Date Picker Area
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Time")
+                        .font(.largeTitle)
+                        .fontWeight(.bold)
                     
-                    Spacer()
+                    DatePicker("Select Date", selection: $selectedDate, displayedComponents: [.date])
+                        .datePickerStyle(.stepperField)
+                        .labelsHidden()
                     
                     Button("Today") {
                         selectedDate = Date()
                     }
                     .buttonStyle(.bordered)
+                    .controlSize(.small)
                 }
                 .padding()
+                .frame(maxWidth: .infinity, alignment: .leading)
                 
                 Divider()
                 
-                // Timer controls
                 TimerControlsView()
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
-            .navigationSplitViewColumnWidth(min: 300, ideal: 350)
-            .navigationTitle("Time Tracker")
+            .navigationSplitViewColumnWidth(min: 250, ideal: 300)
         } detail: {
-            // Day view
             DayView(date: selectedDate)
-                .navigationTitle("Day View")
-        }
-        .sheet(isPresented: $showingDatePicker) {
-            DatePickerSheet(selectedDate: $selectedDate, isPresented: $showingDatePicker)
-        }
-    }
-}
-
-struct DatePickerSheet: View {
-    @Binding var selectedDate: Date
-    @Binding var isPresented: Bool
-    
-    var body: some View {
-        NavigationView {
-            VStack {
-                DatePicker(
-                    "Select Date",
-                    selection: $selectedDate,
-                    displayedComponents: [.date]
-                )
-                .datePickerStyle(.graphical)
-                .padding()
-            }
-            .navigationTitle("Select Date")
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") {
-                        isPresented = false
-                    }
-                }
-                
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Done") {
-                        isPresented = false
-                    }
-                }
-            }
+                .frame(minWidth: 600)
         }
     }
 }

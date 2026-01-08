@@ -1,10 +1,3 @@
-//
-//  TimeApp.swift
-//  Time
-//
-//  Created by Øyvind Strømsvik on 29/06/2025.
-//
-
 import SwiftUI
 import SwiftData
 

@@ -1,10 +1,3 @@
-//
-//  EditTimeEntryView.swift
-//  Time
-//
-//  Created by Øyvind Strømsvik on 29/06/2025.
-//
-
 import SwiftUI
 import SwiftData
 
@@ -28,7 +21,7 @@ struct EditTimeEntryView: View {
     }
     
     var body: some View {
-        NavigationView {
+        NavigationStack {
             Form {
                 Section("Task Details") {
                     TextField("Task Description", text: $taskDescription)
@@ -42,11 +35,6 @@ struct EditTimeEntryView: View {
                     }
                     
                     Toggle("Currently Active", isOn: $isActive)
-                        .onChange(of: isActive) { _, newValue in
-                            if newValue {
-                                endTime = Date()
-                            }
-                        }
                 }
                 
                 Section("Duration") {
@@ -58,11 +46,9 @@ struct EditTimeEntryView: View {
                     }
                 }
                 
-                if !isActive {
-                    Section {
-                        Button("Delete Entry", role: .destructive) {
-                            deleteEntry()
-                        }
+                Section {
+                    Button("Delete Entry", role: .destructive) {
+                        deleteEntry()
                     }
                 }
             }
@@ -84,7 +70,7 @@ struct EditTimeEntryView: View {
     }
     
     private var formattedDuration: String {
-        let duration = endTime.timeIntervalSince(startTime)
+        let duration = isActive ? Date().timeIntervalSince(startTime) : endTime.timeIntervalSince(startTime)
         let hours = Int(duration) / 3600
         let minutes = Int(duration) % 3600 / 60
         let seconds = Int(duration) % 60
@@ -92,17 +78,16 @@ struct EditTimeEntryView: View {
         if hours > 0 {
             return String(format: "%d:%02d:%02d", hours, minutes, seconds)
         } else {
-            return String(format: "%d:%02d", minutes, seconds)
+            return String(format: "%02d:%02d", minutes, seconds)
         }
     }
     
     private func saveChanges() {
-        if isActive {
-            entry.update(startTime: startTime, endTime: Date(), description: taskDescription)
-            entry.isActive = true
-        } else {
-            entry.update(startTime: startTime, endTime: endTime, description: taskDescription)
-        }
+        entry.update(
+            startTime: startTime,
+            endTime: isActive ? nil : endTime,
+            description: taskDescription
+        )
         
         do {
             try modelContext.save()
@@ -114,13 +99,8 @@ struct EditTimeEntryView: View {
     
     private func deleteEntry() {
         modelContext.delete(entry)
-        
-        do {
-            try modelContext.save()
-            dismiss()
-        } catch {
-            print("Error deleting entry: \(error)")
-        }
+        try? modelContext.save()
+        dismiss()
     }
 }
 

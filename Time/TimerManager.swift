@@ -1,10 +1,3 @@
-//
-//  TimerManager.swift
-//  Time
-//
-//  Created by Øyvind Strømsvik on 29/06/2025.
-//
-
 import Foundation
 import SwiftUI
 import SwiftData
@@ -13,6 +6,9 @@ import SwiftData
 class TimerManager {
     private var timer: Timer?
     private var modelContext: ModelContext
+    
+    // This property is just to trigger UI updates for active timers
+    var lastTick: Date = Date()
     
     init(modelContext: ModelContext) {
         self.modelContext = modelContext
@@ -24,39 +20,33 @@ class TimerManager {
     }
     
     private func startTimer() {
-        timer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { _ in
-            // This will trigger UI updates for active timers
+        timer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
+            self?.lastTick = Date()
         }
     }
     
-    func startNewTimer(description: String) {
-        let newEntry = TimeEntry(taskDescription: description)
+    func startNewTimer(description: String, startTime: Date = Date()) {
+        let newEntry = TimeEntry(taskDescription: description, startTime: startTime)
         modelContext.insert(newEntry)
-        
-        do {
-            try modelContext.save()
-        } catch {
-            print("Error saving new timer: \(error)")
-        }
+        save()
     }
     
     func stopTimer(_ entry: TimeEntry) {
         entry.stop()
-        
-        do {
-            try modelContext.save()
-        } catch {
-            print("Error stopping timer: \(error)")
-        }
+        save()
     }
     
     func deleteTimer(_ entry: TimeEntry) {
         modelContext.delete(entry)
-        
+        save()
+    }
+    
+    private func save() {
         do {
             try modelContext.save()
         } catch {
-            print("Error deleting timer: \(error)")
+            print("Error saving: \(error)")
         }
     }
-} 
+}
+ 
