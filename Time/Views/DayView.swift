@@ -10,7 +10,6 @@ struct DayView: View {
     // Zoom/Scale: Height of one hour in points
     @State private var hourHeight: CGFloat = 60
     @State private var selectedEntry: TimeEntry?
-    @State private var showingEditSheet = false
     
     init(date: Date) {
         self.date = date
@@ -52,7 +51,6 @@ struct DayView: View {
                         // Entries (Using the filtered list)
                         EntryLayoutView(entries: filteredTimeEntries, hourHeight: hourHeight, date: date) { entry in
                             selectedEntry = entry
-                            showingEditSheet = true
                         }
                         
                         // Current Time Indicator
@@ -60,6 +58,7 @@ struct DayView: View {
                             CurrentTimeIndicator(hourHeight: hourHeight)
                         }
                     }
+                    .coordinateSpace(name: "timeline")
                     .frame(maxWidth: .infinity)
                     .padding(.leading, 60) // Space for hour labels
                 }
@@ -92,11 +91,9 @@ struct DayView: View {
                 }
             }
             .background(Color(NSColor.textBackgroundColor))
-            .sheet(isPresented: $showingEditSheet) {
-                if let entry = selectedEntry {
+            .sheet(item: $selectedEntry) { entry in
                     EditTimeEntryView(entry: entry)
                         .frame(minWidth: 400, minHeight: 450)
-                }
             }
         }
     
@@ -118,9 +115,9 @@ struct DayView: View {
         
         if let startTime = calendar.date(from: components) {
             let newEntry = TimeEntry(taskDescription: "New Task", startTime: startTime)
+            newEntry.endTime = startTime.addingTimeInterval(1800) // Default 30 mins
             modelContext.insert(newEntry)
             selectedEntry = newEntry
-            showingEditSheet = true
         }
     }
 }
@@ -190,26 +187,41 @@ struct EntryLayoutView: View {
     let onSelect: (TimeEntry) -> Void
     
     var body: some View {
+        // Force the layout to recalculate when any entry's time changes
+        let _ = entries.map { ($0.startTime, $0.endTime) }
         let groupedEntries = calculateHorizontalLayout()
         
-        ZStack(alignment: .topLeading) {
-            ForEach(groupedEntries, id: \.entry.id) { layout in
-                TimeEntryBlock(
-                    entry: layout.entry,
-                    hourHeight: hourHeight,
-                    date: date,
-                    widthPercent: layout.widthPercent,
-                    offsetXPercent: layout.offsetXPercent
-                )
-                .onTapGesture { 
-                    withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
-                        onSelect(layout.entry)
+        GeometryReader { geo in
+            ZStack(alignment: .topLeading) {
+                ForEach(groupedEntries, id: \.entry.id) { layout in
+                    TimeEntryBlock(
+                        entry: layout.entry,
+                        hourHeight: hourHeight,
+                        date: date
+                    )
+                    .frame(width: geo.size.width * layout.widthPercent, height: calculateHeight(for: layout.entry))
+                    .offset(x: geo.size.width * layout.offsetXPercent, y: calculateY(for: layout.entry))
+                    .onTapGesture { 
+                        withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                            onSelect(layout.entry)
+                        }
                     }
                 }
-                .transition(.asymmetric(insertion: .opacity.combined(with: .scale(scale: 0.9)), removal: .opacity))
             }
         }
         .animation(.spring(), value: entries)
+    }
+    
+    private func calculateY(for entry: TimeEntry) -> CGFloat {
+        let calendar = Calendar.current
+        let startOfDay = calendar.startOfDay(for: date)
+        let diff = entry.startTime.timeIntervalSince(startOfDay)
+        return CGFloat(diff / 3600.0) * hourHeight
+    }
+    
+    private func calculateHeight(for entry: TimeEntry) -> CGFloat {
+        let duration = entry.duration
+        return max(24, CGFloat(duration / 3600.0) * hourHeight)
     }
     
     private struct EntryLayout {
@@ -283,55 +295,62 @@ struct TimeEntryBlock: View {
     @Bindable var entry: TimeEntry
     let hourHeight: CGFloat
     let date: Date
-    let widthPercent: CGFloat
-    let offsetXPercent: CGFloat
     
     @Environment(\.modelContext) private var modelContext
     @Environment(TimerManager.self) private var timerManager
-    @State private var dragOffset: CGFloat = 0
-    @State private var resizeOffset: CGFloat = 0
+    @State private var isHovering = false
+    @State private var isDragging = false
+    @State private var isResizing = false
+    
+    @State private var dragInitialStartTime: Date?
+    @State private var dragInitialEndTime: Date?
     
     var body: some View {
-        GeometryReader { geo in
-            // Observe lastTick to refresh active timers
-            let _ = entry.isActive ? timerManager.lastTick : .distantPast
-            
-            let y = calculateY()
-            let h = calculateHeight()
-            let baseColor = entry.isActive ? AppTheme.Colors.activeTimer : AppTheme.Colors.completedTimer
-            
-            VStack(alignment: .leading, spacing: 2) {
-                HStack(alignment: .top) {
-                    Text(entry.taskDescription)
-                        .font(.system(size: 11, weight: .bold))
-                        .lineLimit(2)
-                    
-                    Spacer()
-                    
-                    if entry.isActive {
-                        Image(systemName: "timer")
-                            .font(.system(size: 10))
-                            .symbolEffect(.pulse)
-                    }
-                }
+        // Observe lastTick to refresh active timers
+        let _ = entry.isActive ? timerManager.lastTick : .distantPast
+        let baseColor = entry.isActive ? AppTheme.Colors.activeTimer : AppTheme.Colors.completedTimer
+        
+        VStack(alignment: .leading, spacing: 2) {
+            HStack(alignment: .top) {
+                Text(entry.taskDescription)
+                    .font(.system(size: 11, weight: .bold))
+                    .lineLimit(2)
                 
-                Text(entry.formattedDuration)
-                    .font(.system(size: 10, design: .monospaced))
-                    .opacity(0.8)
+                Spacer()
+                
+                if entry.isActive {
+                    Image(systemName: "timer")
+                        .font(.system(size: 10))
+                        .symbolEffect(.pulse)
+                }
             }
-            .padding(10)
-            .frame(width: geo.size.width * widthPercent, height: h + resizeOffset)
-            .background(
-                RoundedRectangle(cornerRadius: AppTheme.cardCornerRadius)
-                    .fill(AppTheme.Gradients.activeGradient(for: baseColor))
-                    .shadow(color: Color.black.opacity(0.1), radius: 2, x: 0, y: 1)
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: AppTheme.cardCornerRadius)
-                    .strokeBorder(baseColor.opacity(0.5), lineWidth: 1)
-            )
-            .offset(x: geo.size.width * offsetXPercent, y: y + dragOffset)
-            .contextMenu {
+            
+            Text(entry.formattedDuration)
+                .font(.system(size: 10, design: .monospaced))
+                .opacity(0.8)
+        }
+        .padding(10)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(
+            RoundedRectangle(cornerRadius: AppTheme.cardCornerRadius)
+                .fill(AppTheme.Gradients.activeGradient(for: baseColor))
+                .shadow(color: Color.black.opacity(isDragging || isResizing ? 0.2 : 0.1), radius: isDragging || isResizing ? 4 : 2, x: 0, y: isDragging || isResizing ? 2 : 1)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: AppTheme.cardCornerRadius)
+                .strokeBorder(baseColor.opacity(0.5), lineWidth: 1)
+        )
+        .overlay(alignment: .top) {
+            if isDragging || isResizing {
+                timeIndicatorLabel(date: entry.startTime, isTop: true)
+            }
+        }
+        .overlay(alignment: .bottom) {
+            if isDragging || isResizing {
+                timeIndicatorLabel(date: entry.endTime ?? Date(), isTop: false)
+            }
+        }
+        .contextMenu {
                 Button("Edit") {
                     // Selection handled by parent tap
                 }
@@ -346,35 +365,98 @@ struct TimeEntryBlock: View {
                     deleteEntry()
                 }
             }
-            .gesture(
-                DragGesture()
-                    .onChanged { value in
-                        dragOffset = value.translation.height
-                    }
-                    .onEnded { value in
-                        updateTime(offset: value.translation.height)
-                        dragOffset = 0
-                    }
-            )
-            .overlay(alignment: .bottom) {
-                // Resize Handle
-                Rectangle()
-                    .fill(Color.clear)
-                    .frame(height: 12)
-                    .contentShape(Rectangle())
-                    .cursor(.resizeUpDown)
-                    .gesture(
-                        DragGesture()
-                            .onChanged { value in
-                                resizeOffset = value.translation.height
-                            }
-                            .onEnded { value in
-                                updateDuration(offset: value.translation.height)
-                                resizeOffset = 0
-                            }
-                    )
+        .onHover { hovering in
+            withAnimation(.easeInOut(duration: 0.2)) {
+                isHovering = hovering
             }
         }
+        .cursor(isHovering ? .pointingHand : .arrow)
+        .contentShape(Rectangle())
+        .gesture(
+            DragGesture(minimumDistance: 3, coordinateSpace: .named("timeline"))
+                .onChanged { value in
+                    if dragInitialStartTime == nil {
+                        dragInitialStartTime = entry.startTime
+                        dragInitialEndTime = entry.endTime ?? Date()
+                    }
+                    isDragging = true
+                    updateTimeImmediate(offset: value.translation.height)
+                }
+                .onEnded { _ in
+                    isDragging = false
+                    dragInitialStartTime = nil
+                    dragInitialEndTime = nil
+                    try? modelContext.save()
+                }
+        )
+        .overlay(alignment: .top) {
+            resizeHandle(isTop: true)
+                .offset(y: -10)
+        }
+        .overlay(alignment: .bottom) {
+            resizeHandle(isTop: false)
+                .offset(y: 10)
+        }
+    }
+    
+    private func timeIndicatorLabel(date: Date, isTop: Bool) -> some View {
+        Text(formatTime(date))
+            .font(.system(size: 9, weight: .bold, design: .monospaced))
+            .padding(.horizontal, 4)
+            .padding(.vertical, 2)
+            .background(Color.black)
+            .foregroundColor(.white)
+            .cornerRadius(4)
+            .offset(y: isTop ? -22 : 22)
+            .zIndex(10)
+            .allowsHitTesting(false) // CRITICAL: Prevent label from blocking mouse
+    }
+    
+    @ViewBuilder
+    private func resizeHandle(isTop: Bool) -> some View {
+        ZStack {
+            // Invisible larger hit area
+            Rectangle()
+                .fill(Color.white.opacity(0.001))
+                .frame(height: 20)
+            
+            // Visible indicator
+            Rectangle()
+                .fill(Color.white.opacity(0.5))
+                .frame(height: 4)
+                .cornerRadius(2)
+                .padding(.horizontal, 20)
+                .opacity(isHovering || isResizing ? 1 : 0)
+        }
+        .contentShape(Rectangle())
+        .cursor(.resizeUpDown)
+        .highPriorityGesture(
+            DragGesture(minimumDistance: 2, coordinateSpace: .named("timeline"))
+                .onChanged { value in
+                    if dragInitialStartTime == nil {
+                        dragInitialStartTime = entry.startTime
+                        dragInitialEndTime = entry.endTime ?? Date()
+                    }
+                    isResizing = true
+                    if isTop {
+                        updateStartTimeImmediate(offset: value.translation.height)
+                    } else {
+                        updateEndTimeImmediate(offset: value.translation.height)
+                    }
+                }
+                .onEnded { _ in
+                    isResizing = false
+                    dragInitialStartTime = nil
+                    dragInitialEndTime = nil
+                    try? modelContext.save()
+                }
+        )
+    }
+    
+    private func formatTime(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.timeStyle = .short
+        return formatter.string(from: date)
     }
     
     private func deleteEntry() {
@@ -390,35 +472,65 @@ struct TimeEntryBlock: View {
         try? modelContext.save()
     }
     
-    private func calculateY() -> CGFloat {
-        let calendar = Calendar.current
-        let startOfDay = calendar.startOfDay(for: date)
-        let diff = entry.startTime.timeIntervalSince(startOfDay)
-        return CGFloat(diff / 3600.0) * hourHeight
-    }
-    
     private func calculateHeight() -> CGFloat {
         let duration = entry.duration
-        return max(20, CGFloat(duration / 3600.0) * hourHeight)
+        return max(24, CGFloat(duration / 3600.0) * hourHeight)
     }
     
-    private func updateTime(offset: CGFloat) {
+    private func updateTimeImmediate(offset: CGFloat) {
         let hourDiff = offset / hourHeight
         let timeDiff = hourDiff * 3600.0
-        entry.startTime = entry.startTime.addingTimeInterval(timeDiff)
-        if let currentEnd = entry.endTime {
-            entry.endTime = currentEnd.addingTimeInterval(timeDiff)
+        
+        guard let baseStart = dragInitialStartTime, let baseEnd = dragInitialEndTime else { return }
+        
+        let newStart = baseStart.addingTimeInterval(timeDiff)
+        let snappedStart = snapToInterval(newStart)
+        
+        if snappedStart != entry.startTime {
+            let duration = baseEnd.timeIntervalSince(baseStart)
+            entry.startTime = snappedStart
+            entry.endTime = snappedStart.addingTimeInterval(duration)
         }
-        try? modelContext.save()
     }
     
-    private func updateDuration(offset: CGFloat) {
+    private func updateStartTimeImmediate(offset: CGFloat) {
         let hourDiff = offset / hourHeight
         let timeDiff = hourDiff * 3600.0
-        let currentEnd = entry.endTime ?? Date()
-        entry.endTime = currentEnd.addingTimeInterval(timeDiff)
-        entry.isActive = false
-        try? modelContext.save()
+        
+        guard let baseStart = dragInitialStartTime, let baseEnd = dragInitialEndTime else { return }
+        
+        let newStart = baseStart.addingTimeInterval(timeDiff)
+        let snappedStart = snapToInterval(newStart)
+        
+        if snappedStart != entry.startTime {
+            if snappedStart < baseEnd.addingTimeInterval(-300) {
+                entry.startTime = snappedStart
+            }
+        }
+    }
+    
+    private func updateEndTimeImmediate(offset: CGFloat) {
+        let hourDiff = offset / hourHeight
+        let timeDiff = hourDiff * 3600.0
+        
+        guard let baseEnd = dragInitialEndTime, let baseStart = dragInitialStartTime else { return }
+        
+        let newEnd = baseEnd.addingTimeInterval(timeDiff)
+        let snappedEnd = snapToInterval(newEnd)
+        
+        if snappedEnd != entry.endTime {
+            if snappedEnd > baseStart.addingTimeInterval(300) {
+                entry.endTime = snappedEnd
+                entry.isActive = false
+            }
+        }
+    }
+    
+    private func snapToInterval(_ date: Date) -> Date {
+        let interval: TimeInterval = 300 // 5 minutes
+        let seconds = date.timeIntervalSince1970
+        let snappedSeconds = round(seconds / interval) * interval
+        return Date(timeIntervalSince1970: snappedSeconds)
     }
 }
 
