@@ -45,9 +45,12 @@ struct DayView: View {
                         }
                     
                     // Entries
-                    EntryLayoutView(entries: filteredTimeEntries, hourHeight: hourHeight, date: date) { entry in
-                        selectedEntry = entry
-                    }
+                    EntryLayoutView(
+                        entries: filteredTimeEntries,
+                        hourHeight: hourHeight,
+                        date: date,
+                        selectedEntry: $selectedEntry
+                    )
                     
                     // Current Time Indicator
                     if Calendar.current.isDateInToday(date) {
@@ -90,10 +93,6 @@ struct DayView: View {
             }
         }
         .background(AppTheme.Colors.background)
-        .sheet(item: $selectedEntry) { entry in
-            EditTimeEntryView(entry: entry)
-                .frame(minWidth: 400, minHeight: 450)
-        }
     }
     
     private var totalTimeFormatted: String {
@@ -188,7 +187,7 @@ struct EntryLayoutView: View {
     let entries: [TimeEntry]
     let hourHeight: CGFloat
     let date: Date
-    let onSelect: (TimeEntry) -> Void
+    @Binding var selectedEntry: TimeEntry?
     
     var body: some View {
         let _ = entries.map { ($0.startTime, $0.endTime) }
@@ -200,13 +199,11 @@ struct EntryLayoutView: View {
                     TimeEntryBlock(
                         entry: layout.entry,
                         hourHeight: hourHeight,
-                        date: date
+                        date: date,
+                        selectedEntry: $selectedEntry
                     )
                     .frame(width: geo.size.width * layout.widthPercent, height: calculateHeight(for: layout.entry))
                     .offset(x: geo.size.width * layout.offsetXPercent, y: calculateY(for: layout.entry))
-                    .onTapGesture { 
-                        onSelect(layout.entry)
-                    }
                 }
             }
         }
@@ -291,6 +288,7 @@ struct TimeEntryBlock: View {
     @Bindable var entry: TimeEntry
     let hourHeight: CGFloat
     let date: Date
+    @Binding var selectedEntry: TimeEntry?
     
     @Environment(TimerManager.self) private var timerManager
     @State private var isHovering = false
@@ -309,6 +307,13 @@ struct TimeEntryBlock: View {
         }
         .padding(8)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .contentShape(Rectangle())
+        .simultaneousGesture(
+            TapGesture()
+                .onEnded {
+                    selectedEntry = entry
+                }
+        )
         .background(
             RoundedRectangle(cornerRadius: AppTheme.cardCornerRadius)
                 .fill(AppTheme.Gradients.activeGradient(for: baseColor))
@@ -320,6 +325,12 @@ struct TimeEntryBlock: View {
             RoundedRectangle(cornerRadius: AppTheme.cardCornerRadius)
                 .strokeBorder(baseColor.opacity(0.3), lineWidth: 1)
         )
+        .popover(item: Binding(
+            get: { selectedEntry?.id == entry.id ? selectedEntry : nil },
+            set: { if $0 == nil { selectedEntry = nil } }
+        )) { entry in
+            EditTimeEntryView(entry: entry)
+        }
         .overlay(alignment: .top) {
             if isDragging || isResizing { TimeLabel(date: entry.startTime, isTop: true) }
         }
@@ -333,7 +344,6 @@ struct TimeEntryBlock: View {
         }
         .onHover { hovering in withAnimation(.easeInOut(duration: 0.2)) { isHovering = hovering } }
         .cursor(isHovering ? .pointingHand : .arrow)
-        .contentShape(Rectangle())
         .gesture(
             DragGesture(minimumDistance: 4, coordinateSpace: .named("timeline"))
                 .onChanged { value in
