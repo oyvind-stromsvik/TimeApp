@@ -10,44 +10,82 @@ import SwiftData
 
 struct ContentView: View {
     @Environment(\.modelContext) private var modelContext
-    @Query private var items: [Item]
-
+    @State private var selectedDate = Date()
+    @State private var showingDatePicker = false
+    
     var body: some View {
         NavigationSplitView {
-            List {
-                ForEach(items) { item in
-                    NavigationLink {
-                        Text("Item at \(item.timestamp, format: Date.FormatStyle(date: .numeric, time: .standard))")
-                    } label: {
-                        Text(item.timestamp, format: Date.FormatStyle(date: .numeric, time: .standard))
+            // Sidebar with timer controls
+            VStack(spacing: 0) {
+                // Date selector
+                HStack {
+                    Button(action: { showingDatePicker = true }) {
+                        HStack {
+                            Text(selectedDate, format: .dateTime.day().month().year())
+                                .font(.headline)
+                            
+                            Image(systemName: "calendar")
+                                .font(.caption)
+                        }
                     }
-                }
-                .onDelete(perform: deleteItems)
-            }
-            .navigationSplitViewColumnWidth(min: 180, ideal: 200)
-            .toolbar {
-                ToolbarItem {
-                    Button(action: addItem) {
-                        Label("Add Item", systemImage: "plus")
+                    .buttonStyle(.bordered)
+                    
+                    Spacer()
+                    
+                    Button("Today") {
+                        selectedDate = Date()
                     }
+                    .buttonStyle(.bordered)
                 }
+                .padding()
+                
+                Divider()
+                
+                // Timer controls
+                TimerControlsView()
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
+            .navigationSplitViewColumnWidth(min: 300, ideal: 350)
+            .navigationTitle("Time Tracker")
         } detail: {
-            Text("Select an item")
+            // Day view
+            DayView(date: selectedDate)
+                .navigationTitle("Day View")
+        }
+        .sheet(isPresented: $showingDatePicker) {
+            DatePickerSheet(selectedDate: $selectedDate, isPresented: $showingDatePicker)
         }
     }
+}
 
-    private func addItem() {
-        withAnimation {
-            let newItem = Item(timestamp: Date())
-            modelContext.insert(newItem)
-        }
-    }
-
-    private func deleteItems(offsets: IndexSet) {
-        withAnimation {
-            for index in offsets {
-                modelContext.delete(items[index])
+struct DatePickerSheet: View {
+    @Binding var selectedDate: Date
+    @Binding var isPresented: Bool
+    
+    var body: some View {
+        NavigationView {
+            VStack {
+                DatePicker(
+                    "Select Date",
+                    selection: $selectedDate,
+                    displayedComponents: [.date]
+                )
+                .datePickerStyle(.graphical)
+                .padding()
+            }
+            .navigationTitle("Select Date")
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") {
+                        isPresented = false
+                    }
+                }
+                
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") {
+                        isPresented = false
+                    }
+                }
             }
         }
     }
@@ -55,5 +93,5 @@ struct ContentView: View {
 
 #Preview {
     ContentView()
-        .modelContainer(for: Item.self, inMemory: true)
+        .modelContainer(for: TimeEntry.self, inMemory: true)
 }
