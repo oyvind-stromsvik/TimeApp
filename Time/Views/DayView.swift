@@ -134,6 +134,7 @@ struct TimelineGrid: View {
                         Rectangle()
                             .fill(Color.secondary.opacity(0.1))
                             .frame(height: 1)
+                            .offset(x: -50)
                         Spacer()
                     }
                 }
@@ -165,7 +166,7 @@ struct CurrentTimeIndicator: View {
                 .fill(.red)
                 .frame(width: 8, height: 8)
                 .overlay(Circle().stroke(.white, lineWidth: 2))
-                .shadow(color: .red.opacity(0.3), radius: 4)
+                .shadow(color: .red.opacity(0.5), radius: 4)
                 .offset(x: -4)
             
             Rectangle()
@@ -177,6 +178,7 @@ struct CurrentTimeIndicator: View {
                     )
                 )
                 .frame(height: 2)
+                .offset(x: -6)
         }
         .offset(y: yOffset - 1)
         .zIndex(100)
@@ -507,7 +509,30 @@ extension View {
     let container = try! ModelContainer(for: TimeEntry.self, configurations: config)
     let manager = TimerManager(modelContext: container.mainContext)
     
-    return DayView(date: Date())
+    // Add sample data
+    let calendar = Calendar.current
+    let today = Date()
+    
+    // Completed entry 1: 9:00 - 10:30
+    let start1 = calendar.date(bySettingHour: 9, minute: 0, second: 0, of: today)!
+    let end1 = calendar.date(bySettingHour: 10, minute: 30, second: 0, of: today)!
+    let entry1 = TimeEntry(taskDescription: "Morning Standup & Planning", startTime: start1, isActive: false)
+    entry1.endTime = end1
+    container.mainContext.insert(entry1)
+    
+    // Completed entry 2: 11:00 - 12:00
+    let start2 = calendar.date(bySettingHour: 11, minute: 0, second: 0, of: today)!
+    let end2 = calendar.date(bySettingHour: 12, minute: 0, second: 0, of: today)!
+    let entry2 = TimeEntry(taskDescription: "UI Design Refinement", startTime: start2, isActive: false)
+    entry2.endTime = end2
+    container.mainContext.insert(entry2)
+    
+    // Active entry: Started 30 mins ago
+    let start3 = today.addingTimeInterval(-1800)
+    let entry3 = TimeEntry(taskDescription: "Implementing Previews", startTime: start3, isActive: true)
+    container.mainContext.insert(entry3)
+    
+    return DayView(date: today)
         .modelContainer(container)
         .environment(manager)
 }
