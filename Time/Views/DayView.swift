@@ -41,7 +41,11 @@ struct DayView: View {
                     // Background Grid
                     TimelineGrid(hourHeight: hourHeight)
                         .onTapGesture { location in
-                            createEntryAt(location: location)
+                            if selectedEntry != nil {
+                                selectedEntry = nil
+                            } else {
+                                createEntryAt(location: location)
+                            }
                         }
                     
                     // Entries
@@ -108,7 +112,8 @@ struct DayView: View {
         let calendar = Calendar.current
         var components = calendar.dateComponents([.year, .month, .day], from: date)
         components.hour = Int(hour)
-        components.minute = Int((hour.truncatingRemainder(dividingBy: 1)) * 60)
+        let minute = Int((hour.truncatingRemainder(dividingBy: 1)) * 60)
+        components.minute = (minute / 5) * 5
         
         if let startTime = calendar.date(from: components) {
             let endTime = startTime.addingTimeInterval(1800) // 30 minutes
@@ -325,8 +330,10 @@ struct TimeEntryBlock: View {
         )
         .overlay(
             RoundedRectangle(cornerRadius: AppTheme.cardCornerRadius)
-                .strokeBorder(baseColor.opacity(0.3), lineWidth: 1)
+                .stroke(entry.id == selectedEntry?.id ? AppTheme.Colors.accent : baseColor.opacity(0.3),
+                        lineWidth: entry.id == selectedEntry?.id ? 2 : 1)
         )
+        .shadow(color: entry.id == selectedEntry?.id ? AppTheme.Colors.accent.opacity(0.3) : .clear, radius: 4)
         .popover(item: Binding(
             get: { selectedEntry?.id == entry.id ? selectedEntry : nil },
             set: { if $0 == nil { selectedEntry = nil } }
@@ -370,7 +377,8 @@ struct TimeEntryBlock: View {
                 isResizing: $isResizing, 
                 onResize: updateStartTime,
                 onEnded: handleResizeEnded
-            ) 
+            )
+            .offset(y: -8)
         }
         .overlay(alignment: .bottom) { 
             ResizeHandle(
@@ -379,7 +387,8 @@ struct TimeEntryBlock: View {
                 isResizing: $isResizing, 
                 onResize: updateEndTime,
                 onEnded: handleResizeEnded
-            ) 
+            )
+            .offset(y: 8)
         }
     }
     
