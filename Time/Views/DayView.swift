@@ -35,66 +35,66 @@ struct DayView: View {
     }
     
     var body: some View {
-            ScrollViewReader { proxy in
-                ScrollView {
-                    ZStack(alignment: .topLeading) {
-                        // Background Grid
-                        TimelineGrid(hourHeight: hourHeight)
-                            .onTapGesture { location in
-                                createEntryAt(location: location)
-                            }
-                        
-                        // Entries
-                        EntryLayoutView(entries: filteredTimeEntries, hourHeight: hourHeight, date: date) { entry in
-                            selectedEntry = entry
+        ScrollViewReader { proxy in
+            ScrollView {
+                ZStack(alignment: .topLeading) {
+                    // Background Grid
+                    TimelineGrid(hourHeight: hourHeight)
+                        .onTapGesture { location in
+                            createEntryAt(location: location)
                         }
-                        
-                        // Current Time Indicator
-                        if Calendar.current.isDateInToday(date) {
-                            CurrentTimeIndicator(hourHeight: hourHeight)
-                        }
+                    
+                    // Entries
+                    EntryLayoutView(entries: filteredTimeEntries, hourHeight: hourHeight, date: date) { entry in
+                        selectedEntry = entry
                     }
-                    .coordinateSpace(name: "timeline")
-                    .frame(maxWidth: .infinity)
-                    .padding(.leading, 64)
-                }
-                .toolbar {
-                    ToolbarItemGroup(placement: .secondaryAction) {
-                        Button { withAnimation { hourHeight = max(40, hourHeight - 12) } } label: {
-                            Image(systemName: "minus.magnifyingglass")
-                        }
-                        .disabled(hourHeight <= 40)
-                        
-                        Slider(value: $hourHeight, in: 40...240)
-                            .frame(width: 100)
-                        
-                        Button { withAnimation { hourHeight = min(240, hourHeight + 12) } } label: {
-                            Image(systemName: "plus.magnifyingglass")
-                        }
-                        .disabled(hourHeight >= 240)
-                        
-                        Divider()
-                        
-                        HStack(spacing: 4) {
-                            Image(systemName: "sum")
-                                .font(.caption2)
-                            Text(totalTimeFormatted)
-                                .font(.system(size: 11, weight: .bold, design: .monospaced))
-                        }
-                        .foregroundStyle(.secondary)
+                    
+                    // Current Time Indicator
+                    if Calendar.current.isDateInToday(date) {
+                        CurrentTimeIndicator(hourHeight: hourHeight)
                     }
                 }
-                .onAppear {
-                    let hour = Calendar.current.component(.hour, from: Date())
-                    proxy.scrollTo(max(0, hour - 1), anchor: .top)
+                .coordinateSpace(name: "timeline")
+                .frame(maxWidth: .infinity)
+                .padding(.leading, 64)
+            }
+            .toolbar {
+                ToolbarItemGroup(placement: .secondaryAction) {
+                    Button { withAnimation { hourHeight = max(40, hourHeight - 12) } } label: {
+                        Image(systemName: "minus.magnifyingglass")
+                    }
+                    .disabled(hourHeight <= 40)
+                    
+                    Slider(value: $hourHeight, in: 40...240)
+                        .frame(width: 100)
+                    
+                    Button { withAnimation { hourHeight = min(240, hourHeight + 12) } } label: {
+                        Image(systemName: "plus.magnifyingglass")
+                    }
+                    .disabled(hourHeight >= 240)
+                    
+                    Divider()
+                    
+                    HStack(spacing: 4) {
+                        Image(systemName: "sum")
+                            .font(.caption2)
+                        Text(totalTimeFormatted)
+                            .font(.system(size: 11, weight: .bold, design: .monospaced))
+                    }
+                    .foregroundStyle(.secondary)
                 }
             }
-            .background(AppTheme.Colors.background)
-            .sheet(item: $selectedEntry) { entry in
-                EditTimeEntryView(entry: entry)
-                    .frame(minWidth: 400, minHeight: 450)
+            .onAppear {
+                let hour = Calendar.current.component(.hour, from: Date())
+                proxy.scrollTo(max(0, hour - 1), anchor: .top)
             }
         }
+        .background(AppTheme.Colors.background)
+        .sheet(item: $selectedEntry) { entry in
+            EditTimeEntryView(entry: entry)
+                .frame(minWidth: 400, minHeight: 450)
+        }
+    }
     
     private var totalTimeFormatted: String {
         _ = timerManager.lastTick

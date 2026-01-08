@@ -68,7 +68,7 @@ struct EditTimeEntryView: View {
                                     .stroke(Color.secondary.opacity(0.1), lineWidth: 1)
                             )
                     }
-
+                    
                     // Time Range
                     VStack(alignment: .leading, spacing: 12) {
                         Label("TIME RANGE", systemImage: "clock")
@@ -106,39 +106,39 @@ struct EditTimeEntryView: View {
                             .font(.system(size: 13))
                             .foregroundStyle(AppTheme.Colors.textSecondary)
                     }
-    
-                   // Duration Section
-                   VStack(alignment: .leading, spacing: 8) {
-                       Label("DURATION", systemImage: "hourglass")
-                           .font(.system(size: 10, weight: .bold))
-                           .foregroundColor(.secondary)
-                       
-                       TextField("0:00:00", text: $durationString)
-                           .textFieldStyle(.plain)
-                           .font(.system(size: 20, weight: .medium, design: .monospaced))
-                           .padding(12)
-                           .background(AppTheme.Colors.cardBackground)
-                           .cornerRadius(8)
-                           .overlay(
-                               RoundedRectangle(cornerRadius: 8)
-                                   .stroke(Color.secondary.opacity(0.1), lineWidth: 1)
-                           )
-                           .onChange(of: durationString) { _, newValue in
-                               updateTimesFromDuration()
-                           }
-                   }
-                   
-                   Toggle(isOn: $isActive) {
-                       HStack {
-                           Image(systemName: "timer")
-                               .foregroundColor(isActive ? .blue : .secondary)
-                           Text("Currently Active")
-                               .font(.system(size: 13, weight: .medium))
-                       }
-                   }
-                   .toggleStyle(.switch)
-                   .scaleEffect(0.8)
-                   .frame(maxWidth: .infinity, alignment: .leading)
+                    
+                    // Duration Section
+                    VStack(alignment: .leading, spacing: 8) {
+                        Label("DURATION", systemImage: "hourglass")
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundColor(.secondary)
+                        
+                        TextField("0:00:00", text: $durationString)
+                            .textFieldStyle(.plain)
+                            .font(.system(size: 20, weight: .medium, design: .monospaced))
+                            .padding(12)
+                            .background(AppTheme.Colors.cardBackground)
+                            .cornerRadius(8)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 8)
+                                    .stroke(Color.secondary.opacity(0.1), lineWidth: 1)
+                            )
+                            .onChange(of: durationString) { _, newValue in
+                                updateTimesFromDuration()
+                            }
+                    }
+                    
+                    Toggle(isOn: $isActive) {
+                        HStack {
+                            Image(systemName: "timer")
+                                .foregroundColor(isActive ? .blue : .secondary)
+                            Text("Currently Active")
+                                .font(.system(size: 13, weight: .medium))
+                        }
+                    }
+                    .toggleStyle(.switch)
+                    .scaleEffect(0.8)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
                 .padding(20)
             }
@@ -222,8 +222,13 @@ struct EditTimeEntryView: View {
 #Preview {
     let config = ModelConfiguration(isStoredInMemoryOnly: true)
     let container = try! ModelContainer(for: TimeEntry.self, configurations: config)
+    
     let entry = TimeEntry(taskDescription: "Sample Task")
+    container.mainContext.insert(entry)
+    
+    let manager = TimerManager(modelContext: container.mainContext)
     
     return EditTimeEntryView(entry: entry)
         .modelContainer(container)
-} 
+        .environment(manager)
+}

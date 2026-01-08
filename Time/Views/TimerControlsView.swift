@@ -17,7 +17,7 @@ struct TimerControlsView: View {
                     .foregroundStyle(.secondary)
                     .padding(.horizontal, 16)
                     .padding(.top, 16)
-
+                
                 HStack(spacing: 8) {
                     TextField("What are you working on?", text: $newTimerDescription)
                         .textFieldStyle(.plain)
