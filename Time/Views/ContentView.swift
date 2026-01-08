@@ -14,6 +14,18 @@ struct ContentView: View {
             DayView(date: selectedDate)
                 .frame(minWidth: 100, idealWidth: AppTheme.mainWidth, maxWidth: .infinity)
                 .toolbar {
+                    if columnVisibility == .detailOnly {
+                        ToolbarItem(placement: .navigation) {
+                            Button {
+                                withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+                                    columnVisibility = columnVisibility == .detailOnly ? .all : .detailOnly
+                                }
+                            } label: {
+                                Label("Toggle Sidebar", systemImage: "sidebar.left")
+                            }
+                        }
+                    }
+                    
                     ToolbarItem(placement: .principal) {
                         DatePicker("", selection: $selectedDate, displayedComponents: [.date])
                             .datePickerStyle(.stepperField)

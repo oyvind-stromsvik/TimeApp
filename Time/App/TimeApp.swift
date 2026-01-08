@@ -16,6 +16,9 @@ struct TimeApp: App {
             let container = try ModelContainer(for: schema, configurations: [modelConfiguration])
             self.sharedModelContainer = container
             self.timerManager = TimerManager(modelContext: container.mainContext)
+            
+            // Disable native macOS window tabbing
+            NSWindow.allowsAutomaticWindowTabbing = false
         } catch {
             fatalError("Could not create ModelContainer: \(error)")
         }
@@ -27,5 +30,8 @@ struct TimeApp: App {
                 .environment(timerManager)
         }
         .modelContainer(sharedModelContainer)
+        .commands {
+            SidebarCommands()
+        }
     }
 }
