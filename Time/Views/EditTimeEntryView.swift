@@ -3,6 +3,7 @@ import SwiftData
 
 struct EditTimeEntryView: View {
     @Environment(\.modelContext) private var modelContext
+    @Environment(TimerManager.self) private var timerManager
     @Environment(\.dismiss) private var dismiss
     
     let entry: TimeEntry
@@ -20,65 +21,74 @@ struct EditTimeEntryView: View {
         self._endTime = State(initialValue: entry.endTime ?? Date())
         self._isActive = State(initialValue: entry.isActive)
         
-        let initialDuration = entry.duration
-        let hours = Int(initialDuration) / 3600
-        let minutes = Int(initialDuration) % 3600 / 60
-        let seconds = Int(initialDuration) % 60
-        self._durationString = State(initialValue: String(format: "%d:%02d:%02d", hours, minutes, seconds))
+        self._durationString = State(initialValue: TimeEntry.formatDuration(entry.duration))
     }
     
     var body: some View {
         VStack(spacing: 0) {
-            // Header with Close Button
+            // Header
             HStack {
+                Text("Edit Time Entry")
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(AppTheme.Colors.textPrimary)
+                
                 Spacer()
+                
                 Button {
                     dismiss()
                 } label: {
-                    Image(systemName: "xmark")
-                        .font(.system(size: 14, weight: .bold))
-                        .foregroundColor(.secondary)
-                        .padding(8)
-                        .background(Color.secondary.opacity(0.1))
-                        .clipShape(Circle())
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 20))
+                        .foregroundColor(.secondary.opacity(0.3))
                 }
                 .buttonStyle(.plain)
             }
-            .padding(.horizontal)
-            .padding(.top, 12)
+            .padding(.horizontal, 20)
+            .padding(.top, 20)
+            .padding(.bottom, 15)
+            
+            Divider().opacity(0.5)
             
             ScrollView {
-                VStack {
+                VStack(spacing: 24) {
                     // Task Description
                     VStack(alignment: .leading, spacing: 8) {
-                        Text("DETAILS")
+                        Label("DESCRIPTION", systemImage: "pencil.line")
                             .font(.system(size: 10, weight: .bold))
                             .foregroundColor(.secondary)
                         
-                        TextField("Task Description", text: $taskDescription)
+                        TextField("What are you working on?", text: $taskDescription)
                             .textFieldStyle(.plain)
-                            .font(.system(size: 16))
+                            .font(.system(size: 15))
                             .padding(12)
-                            .background(Color.secondary.opacity(0.05))
+                            .background(AppTheme.Colors.cardBackground)
                             .cornerRadius(8)
                             .overlay(
                                 RoundedRectangle(cornerRadius: 8)
-                                    .stroke(Color.secondary.opacity(0.2), lineWidth: 1)
+                                    .stroke(Color.secondary.opacity(0.1), lineWidth: 1)
                             )
                     }
 
-                    // Time Range & Date
-                    VStack(spacing: 12) {
+                    // Time Range
+                    VStack(alignment: .leading, spacing: 12) {
+                        Label("TIME RANGE", systemImage: "clock")
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundColor(.secondary)
+                        
                         HStack(spacing: 12) {
                             DatePicker("", selection: $startTime, displayedComponents: .hourAndMinute)
                                 .labelsHidden()
                                 .datePickerStyle(.stepperField)
                                 .frame(maxWidth: .infinity)
                                 .onChange(of: startTime) { _, _ in updateDurationFromTimes() }
+                                .padding(8)
+                                .background(AppTheme.Colors.cardBackground)
+                                .cornerRadius(6)
+                                .overlay(RoundedRectangle(cornerRadius: 6).stroke(Color.secondary.opacity(0.1), lineWidth: 1))
                             
                             Image(systemName: "arrow.right")
-                                .font(.system(size: 14))
-                                .foregroundColor(.secondary)
+                                .font(.system(size: 12, weight: .bold))
+                                .foregroundColor(.secondary.opacity(0.5))
                             
                             DatePicker("", selection: $endTime, displayedComponents: .hourAndMinute)
                                 .labelsHidden()
@@ -86,54 +96,67 @@ struct EditTimeEntryView: View {
                                 .frame(maxWidth: .infinity)
                                 .disabled(isActive)
                                 .onChange(of: endTime) { _, _ in updateDurationFromTimes() }
+                                .padding(8)
+                                .background(isActive ? Color.secondary.opacity(0.05) : AppTheme.Colors.cardBackground)
+                                .cornerRadius(6)
+                                .overlay(RoundedRectangle(cornerRadius: 6).stroke(Color.secondary.opacity(0.1), lineWidth: 1))
                         }
                         
-                        DatePicker("", selection: $startTime, displayedComponents: .date)
-                            .labelsHidden()
-                            .datePickerStyle(.stepperField)
-                            .frame(maxWidth: .infinity)
+                        DatePicker("Date", selection: $startTime, displayedComponents: .date)
+                            .font(.system(size: 13))
+                            .foregroundStyle(AppTheme.Colors.textSecondary)
                     }
     
                    // Duration Section
                    VStack(alignment: .leading, spacing: 8) {
-                       Text("DURATION")
+                       Label("DURATION", systemImage: "hourglass")
                            .font(.system(size: 10, weight: .bold))
                            .foregroundColor(.secondary)
                        
                        TextField("0:00:00", text: $durationString)
                            .textFieldStyle(.plain)
-                           .font(.system(size: 24, weight: .medium, design: .monospaced))
+                           .font(.system(size: 20, weight: .medium, design: .monospaced))
                            .padding(12)
-                           .background(Color.secondary.opacity(0.05))
+                           .background(AppTheme.Colors.cardBackground)
                            .cornerRadius(8)
                            .overlay(
                                RoundedRectangle(cornerRadius: 8)
-                                   .stroke(Color.secondary.opacity(0.2), lineWidth: 1)
+                                   .stroke(Color.secondary.opacity(0.1), lineWidth: 1)
                            )
                            .onChange(of: durationString) { _, newValue in
                                updateTimesFromDuration()
                            }
                    }
                    
-    
-                 Toggle("Currently Active", isOn: $isActive).toggleStyle(.checkbox)
+                   Toggle(isOn: $isActive) {
+                       HStack {
+                           Image(systemName: "timer")
+                               .foregroundColor(isActive ? .blue : .secondary)
+                           Text("Currently Active")
+                               .font(.system(size: 13, weight: .medium))
+                       }
+                   }
+                   .toggleStyle(.switch)
+                   .scaleEffect(0.8)
+                   .frame(maxWidth: .infinity, alignment: .leading)
                 }
                 .padding(20)
             }
             
-            Divider()
+            Divider().opacity(0.5)
             
             // Footer Buttons
-            HStack {
-                Button(role: .destructive) {
+            HStack(spacing: 12) {
+                Button {
                     deleteEntry()
                 } label: {
-                    Text("Delete")
+                    Label("Delete", systemImage: "trash")
+                        .font(.system(size: 13, weight: .medium))
                         .foregroundColor(.red)
                         .padding(.vertical, 8)
                         .padding(.horizontal, 16)
                         .background(Color.red.opacity(0.1))
-                        .cornerRadius(6)
+                        .cornerRadius(8)
                 }
                 .buttonStyle(.plain)
                 
@@ -142,28 +165,27 @@ struct EditTimeEntryView: View {
                 Button {
                     saveChanges()
                 } label: {
-                    Text("Save")
-                        .fontWeight(.semibold)
+                    Text("Save Changes")
+                        .font(.system(size: 13, weight: .semibold))
                         .foregroundColor(.white)
                         .padding(.vertical, 8)
                         .padding(.horizontal, 24)
-                        .background(Color.accentColor)
-                        .cornerRadius(6)
+                        .background(AppTheme.Gradients.accentGradient)
+                        .cornerRadius(8)
+                        .shadow(color: Color.blue.opacity(0.2), radius: 4, x: 0, y: 2)
                 }
                 .buttonStyle(.plain)
             }
-            .padding(16)
-            .background(Color.secondary.opacity(0.1))
+            .padding(20)
+            .background(Color.secondary.opacity(0.02))
         }
-        .frame(width: 350, height: 500)
+        .frame(width: 380, height: 520)
+        .background(AppTheme.Colors.background)
     }
     
     private func updateDurationFromTimes() {
         let duration = endTime.timeIntervalSince(startTime)
-        let hours = Int(duration) / 3600
-        let minutes = Int(duration) % 3600 / 60
-        let seconds = Int(duration) % 60
-        durationString = String(format: "%d:%02d:%02d", max(0, hours), max(0, minutes), max(0, seconds))
+        durationString = TimeEntry.formatDuration(duration)
     }
     
     private func updateTimesFromDuration() {
@@ -182,23 +204,17 @@ struct EditTimeEntryView: View {
     }
     
     private func saveChanges() {
-        entry.update(
+        timerManager.updateTimer(
+            entry,
             startTime: startTime,
             endTime: isActive ? nil : endTime,
             description: taskDescription
         )
-        
-        do {
-            try modelContext.save()
-            dismiss()
-        } catch {
-            print("Error saving changes: \(error)")
-        }
+        dismiss()
     }
     
     private func deleteEntry() {
-        modelContext.delete(entry)
-        try? modelContext.save()
+        timerManager.deleteTimer(entry)
         dismiss()
     }
 }

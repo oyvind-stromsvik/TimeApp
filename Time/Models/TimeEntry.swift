@@ -13,12 +13,16 @@ final class TimeEntry: Identifiable {
     var hexColor: String?
     
     var duration: TimeInterval {
-        let end = endTime ?? Date()
-        return end.timeIntervalSince(startTime)
+        if isActive {
+            return Date().timeIntervalSince(startTime)
+        } else if let end = endTime {
+            return end.timeIntervalSince(startTime)
+        }
+        return 0
     }
     
-    var formattedDuration: String {
-        let totalSeconds = Int(duration)
+    static func formatDuration(_ duration: TimeInterval) -> String {
+        let totalSeconds = Int(max(0, duration))
         let hours = totalSeconds / 3600
         let minutes = (totalSeconds % 3600) / 60
         let seconds = totalSeconds % 60
@@ -30,12 +34,16 @@ final class TimeEntry: Identifiable {
         }
     }
     
-    init(taskDescription: String, startTime: Date = Date(), hexColor: String? = nil) {
+    var formattedDuration: String {
+        Self.formatDuration(duration)
+    }
+    
+    init(taskDescription: String, startTime: Date = Date(), hexColor: String? = nil, isActive: Bool = true) {
         self.id = UUID()
         self.taskDescription = taskDescription
         self.startTime = startTime
         self.endTime = nil
-        self.isActive = false
+        self.isActive = isActive
         self.hexColor = hexColor
     }
     

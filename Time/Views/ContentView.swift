@@ -8,10 +8,8 @@ struct ContentView: View {
     
     var body: some View {
         NavigationSplitView(columnVisibility: $columnVisibility) {
-            VStack(spacing: 0) {
-                TimerControlsView()
-            }
-            .navigationSplitViewColumnWidth(min: 250, ideal: 300)
+            TimerControlsView()
+                .navigationSplitViewColumnWidth(min: 250, ideal: AppTheme.sidebarWidth, max: 400)
         } detail: {
             DayView(date: selectedDate)
                 .frame(minWidth: 600)
@@ -20,15 +18,23 @@ struct ContentView: View {
                         DatePicker("", selection: $selectedDate, displayedComponents: [.date])
                             .datePickerStyle(.stepperField)
                             .labelsHidden()
-                            .frame(width: 150)
+                            .frame(width: 140)
+                            .padding(.horizontal, 8)
+                            .background(Color.secondary.opacity(0.05))
+                            .cornerRadius(6)
                     }
                     
                     ToolbarItem(placement: .primaryAction) {
-                        Button("Today") {
-                            withAnimation {
+                        Button {
+                            withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
                                 selectedDate = Date()
                             }
+                        } label: {
+                            Label("Today", systemImage: "calendar")
+                                .font(.system(size: 12, weight: .medium))
                         }
+                        .buttonStyle(.bordered)
+                        .controlSize(.small)
                     }
                 }
         }

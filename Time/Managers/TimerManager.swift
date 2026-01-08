@@ -26,7 +26,12 @@ class TimerManager {
     }
     
     func startNewTimer(description: String, startTime: Date = Date()) {
-        let newEntry = TimeEntry(taskDescription: description, startTime: startTime)
+        addEntry(description: description, startTime: startTime, isActive: true)
+    }
+    
+    func addEntry(description: String, startTime: Date, endTime: Date? = nil, isActive: Bool = false) {
+        let newEntry = TimeEntry(taskDescription: description, startTime: startTime, isActive: isActive)
+        newEntry.endTime = endTime
         modelContext.insert(newEntry)
         save()
     }
@@ -41,11 +46,31 @@ class TimerManager {
         save()
     }
     
-    private func save() {
+    func duplicateTimer(_ entry: TimeEntry) {
+        let newEntry = TimeEntry(
+            taskDescription: entry.taskDescription,
+            startTime: entry.startTime,
+            hexColor: entry.hexColor,
+            isActive: false
+        )
+        newEntry.endTime = entry.endTime
+        modelContext.insert(newEntry)
+        save()
+    }
+    
+    func updateTimer(_ entry: TimeEntry, startTime: Date, endTime: Date?, description: String) {
+        entry.update(startTime: startTime, endTime: endTime, description: description)
+        save()
+    }
+    
+    func save() {
         do {
-            try modelContext.save()
+            if modelContext.hasChanges {
+                try modelContext.save()
+            }
         } catch {
-            print("Error saving: \(error)")
+            print("Error saving: \(error.localizedDescription)")
+            // Future: could post notification or update state to show error in UI
         }
     }
 }
