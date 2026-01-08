@@ -55,24 +55,19 @@ struct ContentView: View {
 
 #Preview {
     let config = ModelConfiguration(isStoredInMemoryOnly: true)
-    let container = try! ModelContainer(for: TimeEntry.self, configurations: config)
-    let manager = TimerManager(modelContext: container.mainContext)
-    
-    // Add sample data for preview
+    let container = try! ModelContainer(for: Task.self, configurations: config)
+    let manager = AppManager(modelContext: container.mainContext)
     let today = Date()
-    let calendar = Calendar.current
     
-    // Morning entry
-    let start1 = calendar.date(bySettingHour: 9, minute: 0, second: 0, of: today)!
-    let end1 = calendar.date(bySettingHour: 10, minute: 30, second: 0, of: today)!
-    let entry1 = TimeEntry(taskDescription: "Daily Standup", startTime: start1, isActive: false)
-    entry1.endTime = end1
-    container.mainContext.insert(entry1)
+    let start1 = today.addingTimeInterval(-10000)
+    let end1 = today.addingTimeInterval(-7200)
+    let task1 = Task(taskDescription: "Daily Standup", startTime: start1, isActive: false)
+    task1.endTime = end1
+    container.mainContext.insert(task1)
     
-    // Active entry
     let start2 = today.addingTimeInterval(-3600)
-    let entry2 = TimeEntry(taskDescription: "Working on UI Previews", startTime: start2, isActive: true)
-    container.mainContext.insert(entry2)
+    let task2 = Task(taskDescription: "Working on UI Previews", startTime: start2, isActive: true)
+    container.mainContext.insert(task2)
     
     return ContentView()
         .modelContainer(container)

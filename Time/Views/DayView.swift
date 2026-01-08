@@ -3,13 +3,13 @@ import SwiftData
 
 struct DayView: View {
     let date: Date
-    @Query private var timeEntries: [TimeEntry]
+    @Query private var tasks: [Task]
     @Environment(\.modelContext) private var modelContext
-    @Environment(TimerManager.self) private var timerManager
+    @Environment(AppManager.self) private var manager
     
     // Zoom/Scale: Height of one hour in points
     @State private var hourHeight: CGFloat = 64
-    @State private var selectedEntry: TimeEntry?
+    @State private var selectedTask: Task?
     
     init(date: Date) {
         self.date = date
@@ -17,20 +17,20 @@ struct DayView: View {
         let startOfDay = calendar.startOfDay(for: date)
         let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay)!
         
-        let predicate = #Predicate<TimeEntry> { entry in
-            entry.startTime < endOfDay
+        let predicate = #Predicate<Task> { task in
+            task.startTime < endOfDay
         }
         
-        _timeEntries = Query(filter: predicate, sort: \TimeEntry.startTime)
+        _tasks = Query(filter: predicate, sort: \Task.startTime)
     }
     
-    private var filteredTimeEntries: [TimeEntry] {
+    private var filteredTasks: [Task] {
         let calendar = Calendar.current
         let startOfDay = calendar.startOfDay(for: date)
         
-        return timeEntries.filter { entry in
-            let entryEnd = entry.endTime ?? Date.distantFuture
-            return entryEnd >= startOfDay
+        return tasks.filter { task in
+            let taskEnd = task.endTime ?? Date.distantFuture
+            return taskEnd >= startOfDay
         }
     }
     
@@ -41,19 +41,19 @@ struct DayView: View {
                     // Background Grid
                     TimelineGrid(hourHeight: hourHeight)
                         .onTapGesture { location in
-                            if selectedEntry != nil {
-                                selectedEntry = nil
+                            if selectedTask != nil {
+                                selectedTask = nil
                             } else {
-                                createEntryAt(location: location)
+                                createTaskAtPosition(location: location)
                             }
                         }
                     
-                    // Entries
-                    EntryLayoutView(
-                        entries: filteredTimeEntries,
+                    // Tasks
+                    TaskLayoutView(
+                        tasks: filteredTasks,
                         hourHeight: hourHeight,
                         date: date,
-                        selectedEntry: $selectedEntry
+                        selectedTask: $selectedTask
                     )
                     
                     // Current Time Indicator
@@ -100,14 +100,14 @@ struct DayView: View {
     }
     
     private var totalTimeFormatted: String {
-        _ = timerManager.lastTick
-        let totalSeconds = filteredTimeEntries.reduce(0) { $0 + $1.duration }
+        _ = manager.lastTick
+        let totalSeconds = filteredTasks.reduce(0) { $0 + $1.duration }
         let hours = Int(totalSeconds) / 3600
         let minutes = Int(totalSeconds) % 3600 / 60
         return String(format: "%dh %dm", hours, minutes)
     }
     
-    private func createEntryAt(location: CGPoint) {
+    private func createTaskAtPosition(location: CGPoint) {
         let hour = location.y / hourHeight
         let calendar = Calendar.current
         var components = calendar.dateComponents([.year, .month, .day], from: date)
@@ -117,7 +117,7 @@ struct DayView: View {
         
         if let startTime = calendar.date(from: components) {
             let endTime = startTime.addingTimeInterval(1800) // 30 minutes
-            timerManager.addEntry(description: "New Task", startTime: startTime, endTime: endTime, isActive: false)
+            manager.addNewTask(description: "New Task", startTime: startTime, endTime: endTime, isActive: false)
         }
     }
 }
@@ -157,10 +157,10 @@ struct TimelineGrid: View {
 
 struct CurrentTimeIndicator: View {
     let hourHeight: CGFloat
-    @Environment(TimerManager.self) private var timerManager
+    @Environment(AppManager.self) private var manager
     
     var body: some View {
-        let now = timerManager.lastTick
+        let now = manager.lastTick
         let calendar = Calendar.current
         let hour = CGFloat(calendar.component(.hour, from: now))
         let minute = CGFloat(calendar.component(.minute, from: now))
@@ -190,64 +190,64 @@ struct CurrentTimeIndicator: View {
     }
 }
 
-struct EntryLayoutView: View {
-    let entries: [TimeEntry]
+struct TaskLayoutView: View {
+    let tasks: [Task]
     let hourHeight: CGFloat
     let date: Date
-    @Binding var selectedEntry: TimeEntry?
+    @Binding var selectedTask: Task?
     
     var body: some View {
-        let _ = entries.map { ($0.startTime, $0.endTime) }
-        let groupedEntries = calculateHorizontalLayout()
+        let _ = tasks.map { ($0.startTime, $0.endTime) }
+        let groupedTasks = calculateHorizontalLayout()
         
         GeometryReader { geo in
             ZStack(alignment: .topLeading) {
-                ForEach(groupedEntries, id: \.entry.id) { layout in
-                    TimeEntryBlock(
-                        entry: layout.entry,
+                ForEach(groupedTasks, id: \.task.id) { layout in
+                    TaskBlock(
+                        task: layout.task,
                         hourHeight: hourHeight,
                         date: date,
-                        selectedEntry: $selectedEntry
+                        selectedTask: $selectedTask
                     )
-                    .frame(width: geo.size.width * layout.widthPercent, height: calculateHeight(for: layout.entry))
-                    .offset(x: geo.size.width * layout.offsetXPercent, y: calculateY(for: layout.entry))
+                    .frame(width: geo.size.width * layout.widthPercent, height: calculateHeight(for: layout.task))
+                    .offset(x: geo.size.width * layout.offsetXPercent, y: calculateY(for: layout.task))
                 }
             }
         }
     }
     
-    private func calculateY(for entry: TimeEntry) -> CGFloat {
+    private func calculateY(for task: Task) -> CGFloat {
         let calendar = Calendar.current
         let startOfDay = calendar.startOfDay(for: date)
-        let diff = entry.startTime.timeIntervalSince(startOfDay)
+        let diff = task.startTime.timeIntervalSince(startOfDay)
         return CGFloat(diff / 3600.0) * hourHeight
     }
     
-    private func calculateHeight(for entry: TimeEntry) -> CGFloat {
-        let duration = entry.duration
+    private func calculateHeight(for task: Task) -> CGFloat {
+        let duration = task.duration
         return max(24, CGFloat(duration / 3600.0) * hourHeight)
     }
     
-    private struct EntryLayout {
-        let entry: TimeEntry
+    private struct TaskLayout {
+        let task: Task
         let widthPercent: CGFloat
         let offsetXPercent: CGFloat
     }
     
-    private func calculateHorizontalLayout() -> [EntryLayout] {
-        guard !entries.isEmpty else { return [] }
+    private func calculateHorizontalLayout() -> [TaskLayout] {
+        guard !tasks.isEmpty else { return [] }
         
-        var layouts: [EntryLayout] = []
+        var layouts: [TaskLayout] = []
         var processedIds: Set<UUID> = []
         
-        for entry in entries {
-            if processedIds.contains(entry.id) { continue }
+        for task in tasks {
+            if processedIds.contains(task.id) { continue }
             
-            var group = [entry]
+            var group = [task]
             var changed = true
             while changed {
                 changed = false
-                for other in entries {
+                for other in tasks {
                     if !processedIds.contains(other.id) && !group.contains(where: { $0.id == other.id }) {
                         if group.contains(where: { $0.overlaps(with: other) }) {
                             group.append(other)
@@ -259,7 +259,7 @@ struct EntryLayoutView: View {
             
             group.sort { $0.startTime < $1.startTime }
             
-            var columns: [[TimeEntry]] = []
+            var columns: [[Task]] = []
             for item in group {
                 var assigned = false
                 for (index, col) in columns.enumerated() {
@@ -277,8 +277,8 @@ struct EntryLayoutView: View {
             let columnCount = CGFloat(columns.count)
             for (colIndex, col) in columns.enumerated() {
                 for item in col {
-                    layouts.append(EntryLayout(
-                        entry: item,
+                    layouts.append(TaskLayout(
+                        task: item,
                         widthPercent: 1.0 / columnCount,
                         offsetXPercent: CGFloat(colIndex) / columnCount
                     ))
@@ -291,13 +291,13 @@ struct EntryLayoutView: View {
     }
 }
 
-struct TimeEntryBlock: View {
-    @Bindable var entry: TimeEntry
+struct TaskBlock: View {
+    @Bindable var task: Task
     let hourHeight: CGFloat
     let date: Date
-    @Binding var selectedEntry: TimeEntry?
+    @Binding var selectedTask: Task?
     
-    @Environment(TimerManager.self) private var timerManager
+    @Environment(AppManager.self) private var manager
     @State private var isHovering = false
     @State private var isDragging = false
     @State private var isResizing = false
@@ -306,11 +306,11 @@ struct TimeEntryBlock: View {
     @State private var dragInitialEndTime: Date?
     
     var body: some View {
-        let _ = entry.isActive ? timerManager.lastTick : .distantPast
-        let baseColor = entry.isActive ? AppTheme.Colors.activeTimer : AppTheme.Colors.completedTimer
+        let _ = task.isActive ? manager.lastTick : .distantPast
+        let baseColor = task.isActive ? AppTheme.Colors.activeTimer : AppTheme.Colors.completedTimer
         
         VStack(alignment: .leading, spacing: 2) {
-            EntryContent(entry: entry)
+            TaskContent(task: task)
         }
         .padding(8)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
@@ -318,7 +318,7 @@ struct TimeEntryBlock: View {
         .simultaneousGesture(
             TapGesture()
                 .onEnded {
-                    selectedEntry = entry
+                    selectedTask = task
                 }
         )
         .background(
@@ -330,26 +330,26 @@ struct TimeEntryBlock: View {
         )
         .overlay(
             RoundedRectangle(cornerRadius: AppTheme.cardCornerRadius)
-                .stroke(entry.id == selectedEntry?.id ? AppTheme.Colors.accent : baseColor.opacity(0.3),
-                        lineWidth: entry.id == selectedEntry?.id ? 2 : 1)
+                .stroke(task.id == selectedTask?.id ? AppTheme.Colors.accent : baseColor.opacity(0.3),
+                        lineWidth: task.id == selectedTask?.id ? 2 : 1)
         )
-        .shadow(color: entry.id == selectedEntry?.id ? AppTheme.Colors.accent.opacity(0.3) : .clear, radius: 4)
+        .shadow(color: task.id == selectedTask?.id ? AppTheme.Colors.accent.opacity(0.3) : .clear, radius: 4)
         .popover(item: Binding(
-            get: { selectedEntry?.id == entry.id ? selectedEntry : nil },
-            set: { if $0 == nil { selectedEntry = nil } }
-        )) { entry in
-            EditTimeEntryView(entry: entry)
+            get: { selectedTask?.id == task.id ? selectedTask : nil },
+            set: { if $0 == nil { selectedTask = nil } }
+        )) { task in
+            EditTaskView(task: task)
         }
         .overlay(alignment: .top) {
-            if isDragging || isResizing { TimeLabel(date: entry.startTime, isTop: true) }
+            if isDragging || isResizing { TimeLabel(date: task.startTime, isTop: true) }
         }
         .overlay(alignment: .bottom) {
-            if isDragging || isResizing { TimeLabel(date: entry.endTime ?? Date(), isTop: false) }
+            if isDragging || isResizing { TimeLabel(date: task.endTime ?? Date(), isTop: false) }
         }
         .contextMenu {
-            Button("Duplicate") { timerManager.duplicateTimer(entry) }
+            Button("Duplicate") { manager.duplicateTask(task) }
             Divider()
-            Button("Delete", role: .destructive) { timerManager.deleteTimer(entry) }
+            Button("Delete", role: .destructive) { manager.deleteTask(task) }
         }
         .onHover { hovering in withAnimation(.easeInOut(duration: 0.2)) { isHovering = hovering } }
         .cursor(isHovering ? .pointingHand : .arrow)
@@ -357,8 +357,8 @@ struct TimeEntryBlock: View {
             DragGesture(minimumDistance: 4, coordinateSpace: .named("timeline"))
                 .onChanged { value in
                     if dragInitialStartTime == nil {
-                        dragInitialStartTime = entry.startTime
-                        dragInitialEndTime = entry.endTime ?? Date()
+                        dragInitialStartTime = task.startTime
+                        dragInitialEndTime = task.endTime ?? Date()
                     }
                     isDragging = true
                     updatePosition(offset: value.translation.height)
@@ -367,7 +367,7 @@ struct TimeEntryBlock: View {
                     isDragging = false
                     dragInitialStartTime = nil
                     dragInitialEndTime = nil
-                    timerManager.save()
+                    manager.save()
                 }
         )
         .overlay(alignment: .top) { 
@@ -396,7 +396,7 @@ struct TimeEntryBlock: View {
         isResizing = false
         dragInitialStartTime = nil
         dragInitialEndTime = nil
-        timerManager.save()
+        manager.save()
     }
     
     private func updatePosition(offset: CGFloat) {
@@ -404,22 +404,22 @@ struct TimeEntryBlock: View {
         let timeDiff = (offset / hourHeight) * 3600.0
         let newStart = snap(baseStart.addingTimeInterval(timeDiff))
         let duration = baseEnd.timeIntervalSince(baseStart)
-        entry.startTime = newStart
-        entry.endTime = newStart.addingTimeInterval(duration)
+        task.startTime = newStart
+        task.endTime = newStart.addingTimeInterval(duration)
     }
     
     private func updateStartTime(offset: CGFloat) {
-        if dragInitialStartTime == nil { dragInitialStartTime = entry.startTime; dragInitialEndTime = entry.endTime ?? Date() }
+        if dragInitialStartTime == nil { dragInitialStartTime = task.startTime; dragInitialEndTime = task.endTime ?? Date() }
         guard let baseStart = dragInitialStartTime, let baseEnd = dragInitialEndTime else { return }
         let newStart = snap(baseStart.addingTimeInterval((offset / hourHeight) * 3600.0))
-        if newStart < baseEnd.addingTimeInterval(-300) { entry.startTime = newStart }
+        if newStart < baseEnd.addingTimeInterval(-300) { task.startTime = newStart }
     }
     
     private func updateEndTime(offset: CGFloat) {
-        if dragInitialEndTime == nil { dragInitialEndTime = entry.endTime ?? Date(); dragInitialStartTime = entry.startTime }
+        if dragInitialEndTime == nil { dragInitialEndTime = task.endTime ?? Date(); dragInitialStartTime = task.startTime }
         guard let baseStart = dragInitialStartTime, let baseEnd = dragInitialEndTime else { return }
         let newEnd = snap(baseEnd.addingTimeInterval((offset / hourHeight) * 3600.0))
-        if newEnd > baseStart.addingTimeInterval(300) { entry.endTime = newEnd; entry.isActive = false }
+        if newEnd > baseStart.addingTimeInterval(300) { task.endTime = newEnd; task.isActive = false }
     }
     
     private func snap(_ date: Date) -> Date {
@@ -428,25 +428,25 @@ struct TimeEntryBlock: View {
     }
 }
 
-struct EntryContent: View {
-    let entry: TimeEntry
+struct TaskContent: View {
+    let task: Task
     
     var body: some View {
         HStack(alignment: .top) {
             VStack(alignment: .leading, spacing: 2) {
-                Text(entry.taskDescription)
+                Text(task.taskDescription)
                     .font(.system(size: 11, weight: .bold))
                     .foregroundStyle(AppTheme.Colors.textPrimary)
                     .lineLimit(2)
                 
-                Text(entry.formattedDuration)
+                Text(task.formattedDuration)
                     .font(.system(size: 10, weight: .medium, design: .monospaced))
-                    .foregroundStyle(entry.isActive ? .blue : .secondary)
+                    .foregroundStyle(task.isActive ? .blue : .secondary)
             }
             
             Spacer()
             
-            if entry.isActive {
+            if task.isActive {
                 Image(systemName: "timer")
                     .font(.system(size: 10))
                     .foregroundColor(.blue)
@@ -515,31 +515,25 @@ extension View {
 
 #Preview {
     let config = ModelConfiguration(isStoredInMemoryOnly: true)
-    let container = try! ModelContainer(for: TimeEntry.self, configurations: config)
-    let manager = TimerManager(modelContext: container.mainContext)
-    
-    // Add sample data
-    let calendar = Calendar.current
+    let container = try! ModelContainer(for: Task.self, configurations: config)
+    let manager = AppManager(modelContext: container.mainContext)
     let today = Date()
     
-    // Completed entry 1: 9:00 - 10:30
-    let start1 = calendar.date(bySettingHour: 9, minute: 0, second: 0, of: today)!
-    let end1 = calendar.date(bySettingHour: 10, minute: 30, second: 0, of: today)!
-    let entry1 = TimeEntry(taskDescription: "Morning Standup & Planning", startTime: start1, isActive: false)
-    entry1.endTime = end1
-    container.mainContext.insert(entry1)
+    let start1 = today.addingTimeInterval(-12000)
+    let end1 = today.addingTimeInterval(-8000)
+    let task1 = Task(taskDescription: "Morning Standup & Planning", startTime: start1, isActive: false)
+    task1.endTime = end1
+    container.mainContext.insert(task1)
     
-    // Completed entry 2: 11:00 - 12:00
-    let start2 = calendar.date(bySettingHour: 11, minute: 0, second: 0, of: today)!
-    let end2 = calendar.date(bySettingHour: 12, minute: 0, second: 0, of: today)!
-    let entry2 = TimeEntry(taskDescription: "UI Design Refinement", startTime: start2, isActive: false)
-    entry2.endTime = end2
-    container.mainContext.insert(entry2)
+    let start2 = today.addingTimeInterval(-7200)
+    let end2 = today.addingTimeInterval(-3600)
+    let task2 = Task(taskDescription: "UI Design Refinement", startTime: start2, isActive: false)
+    task2.endTime = end2
+    container.mainContext.insert(task2)
     
-    // Active entry: Started 30 mins ago
     let start3 = today.addingTimeInterval(-1800)
-    let entry3 = TimeEntry(taskDescription: "Implementing Previews", startTime: start3, isActive: true)
-    container.mainContext.insert(entry3)
+    let task3 = Task(taskDescription: "Implementing Previews", startTime: start3, isActive: true)
+    container.mainContext.insert(task3)
     
     return DayView(date: today)
         .modelContainer(container)

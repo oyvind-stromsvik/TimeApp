@@ -3,8 +3,8 @@ import SwiftData
 
 struct TimerControlsView: View {
     @Environment(\.modelContext) private var modelContext
-    @Environment(TimerManager.self) private var timerManager
-    @Query(filter: #Predicate<TimeEntry> { $0.isActive == true }, sort: \TimeEntry.startTime) private var activeEntries: [TimeEntry]
+    @Environment(AppManager.self) private var manager
+    @Query(filter: #Predicate<Task> { $0.isActive == true }, sort: \Task.startTime) private var activeTasks: [Task]
     
     @State private var newTimerDescription = ""
     
@@ -12,7 +12,7 @@ struct TimerControlsView: View {
         VStack(spacing: 0) {
             // Quick Start Field
             VStack(alignment: .leading, spacing: 8) {
-                Text("TRACK NEW TASK")
+                Text("START NEW TIMER")
                     .font(.system(size: 10, weight: .bold))
                     .foregroundStyle(.secondary)
                     .padding(.horizontal, 16)
@@ -54,7 +54,7 @@ struct TimerControlsView: View {
             
             Divider()
             
-            if activeEntries.isEmpty {
+            if activeTasks.isEmpty {
                 VStack(spacing: 16) {
                     Image(systemName: "timer")
                         .font(.system(size: 40, weight: .ultraLight))
@@ -62,7 +62,7 @@ struct TimerControlsView: View {
                     Text("No Active Timers")
                         .font(.system(size: 14, weight: .medium))
                         .foregroundStyle(.secondary)
-                    Text("Start a task to begin tracking time.")
+                    Text("Start a new timer to begin tracking time.")
                         .font(.system(size: 11))
                         .foregroundStyle(.secondary.opacity(0.6))
                         .multilineTextAlignment(.center)
@@ -72,11 +72,11 @@ struct TimerControlsView: View {
             } else {
                 List {
                     Section {
-                        ForEach(activeEntries) { entry in
-                            ActiveTimerRow(entry: entry)
+                        ForEach(activeTasks) { task in
+                            ActiveTimerRow(task: task)
                         }
                     } header: {
-                        Text("ACTIVE TASKS")
+                        Text("ACTIVE TIMERS")
                             .font(.system(size: 10, weight: .bold))
                             .foregroundStyle(.secondary)
                             .padding(.vertical, 8)
@@ -90,20 +90,20 @@ struct TimerControlsView: View {
     
     private func startTimer() {
         guard !newTimerDescription.isEmpty else { return }
-        timerManager.startNewTimer(description: newTimerDescription)
+        manager.startNewTimer(description: newTimerDescription)
         newTimerDescription = ""
     }
 }
 
 struct ActiveTimerRow: View {
-    @Bindable var entry: TimeEntry
-    @Environment(TimerManager.self) private var timerManager
+    @Bindable var task: Task
+    @Environment(AppManager.self) private var manager
     
     var body: some View {
-        let _ = timerManager.lastTick
+        let _ = manager.lastTick
         HStack(spacing: 12) {
             VStack(alignment: .leading, spacing: 4) {
-                Text(entry.taskDescription)
+                Text(task.taskDescription)
                     .font(.system(size: 13, weight: .medium))
                     .foregroundStyle(AppTheme.Colors.textPrimary)
                 
@@ -111,9 +111,9 @@ struct ActiveTimerRow: View {
                     Circle()
                         .fill(Color.blue)
                         .frame(width: 6, height: 6)
-                        .symbolEffect(.pulse, value: timerManager.lastTick)
+                        .symbolEffect(.pulse, value: manager.lastTick)
                     
-                    Text(entry.formattedDuration)
+                    Text(task.formattedDuration)
                         .font(.system(size: 11, weight: .medium, design: .monospaced))
                         .foregroundColor(.blue)
                 }
@@ -123,7 +123,7 @@ struct ActiveTimerRow: View {
             
             Button {
                 withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                    timerManager.stopTimer(entry)
+                    manager.stopTimer(task)
                 }
             } label: {
                 Image(systemName: "stop.fill")
@@ -142,8 +142,17 @@ struct ActiveTimerRow: View {
 
 #Preview {
     let config = ModelConfiguration(isStoredInMemoryOnly: true)
-    let container = try! ModelContainer(for: TimeEntry.self, configurations: config)
-    let manager = TimerManager(modelContext: container.mainContext)
+    let container = try! ModelContainer(for: Task.self, configurations: config)
+    let manager = AppManager(modelContext: container.mainContext)
+    let today = Date()
+    
+    let start = today.addingTimeInterval(-3600)
+    let task = Task(taskDescription: "Daily Standup", startTime: start, isActive: true)
+    container.mainContext.insert(task)
+    
+    let start2 = today
+    let task2 = Task(taskDescription: "Working on UI Previews", startTime: start2, isActive: true)
+    container.mainContext.insert(task2)
     
     return TimerControlsView()
         .modelContainer(container)

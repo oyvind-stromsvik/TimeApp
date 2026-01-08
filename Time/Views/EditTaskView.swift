@@ -1,12 +1,12 @@
 import SwiftUI
 import SwiftData
 
-struct EditTimeEntryView: View {
+struct EditTaskView: View {
     @Environment(\.modelContext) private var modelContext
-    @Environment(TimerManager.self) private var timerManager
+    @Environment(AppManager.self) private var manager
     @Environment(\.dismiss) private var dismiss
     
-    let entry: TimeEntry
+    let task: Task
     
     @State private var taskDescription: String
     @State private var startTime: Date
@@ -14,21 +14,21 @@ struct EditTimeEntryView: View {
     @State private var isActive: Bool
     @State private var durationString: String = ""
     
-    init(entry: TimeEntry) {
-        self.entry = entry
-        self._taskDescription = State(initialValue: entry.taskDescription)
-        self._startTime = State(initialValue: entry.startTime)
-        self._endTime = State(initialValue: entry.endTime ?? Date())
-        self._isActive = State(initialValue: entry.isActive)
+    init(task: Task) {
+        self.task = task
+        self._taskDescription = State(initialValue: task.taskDescription)
+        self._startTime = State(initialValue: task.startTime)
+        self._endTime = State(initialValue: task.endTime ?? Date())
+        self._isActive = State(initialValue: task.isActive)
         
-        self._durationString = State(initialValue: TimeEntry.formatDuration(entry.duration))
+        self._durationString = State(initialValue: Task.formatDuration(task.duration))
     }
     
     var body: some View {
         VStack(spacing: 0) {
             // Header
             HStack {
-                Text("Edit Time Entry")
+                Text("Edit Task")
                     .font(.system(size: 16, weight: .semibold))
                     .foregroundStyle(AppTheme.Colors.textPrimary)
                 
@@ -116,7 +116,7 @@ struct EditTimeEntryView: View {
                         HStack {
                             Image(systemName: "timer")
                                 .foregroundColor(isActive ? .blue : .secondary)
-                            Text("Currently Active")
+                            Text("Is active")
                                 .font(.system(size: 13, weight: .medium))
                         }
                     }
@@ -131,7 +131,7 @@ struct EditTimeEntryView: View {
             // Footer Buttons
             HStack(spacing: 50) {
                 Button {
-                    deleteEntry()
+                    deleteTask()
                 } label: {
                     Label("Delete", systemImage: "trash")
                         .foregroundColor(.red)
@@ -162,7 +162,7 @@ struct EditTimeEntryView: View {
     
     private func updateDurationFromTimes() {
         let duration = endTime.timeIntervalSince(startTime)
-        durationString = TimeEntry.formatDuration(duration)
+        durationString = Task.formatDuration(duration)
     }
     
     private func updateTimesFromDuration() {
@@ -181,8 +181,8 @@ struct EditTimeEntryView: View {
     }
     
     private func saveChanges() {
-        timerManager.updateTimer(
-            entry,
+        manager.updateTask(
+            task,
             startTime: startTime,
             endTime: isActive ? nil : endTime,
             description: taskDescription
@@ -190,22 +190,22 @@ struct EditTimeEntryView: View {
         dismiss()
     }
     
-    private func deleteEntry() {
-        timerManager.deleteTimer(entry)
+    private func deleteTask() {
+        manager.deleteTask(task)
         dismiss()
     }
 }
 
 #Preview {
     let config = ModelConfiguration(isStoredInMemoryOnly: true)
-    let container = try! ModelContainer(for: TimeEntry.self, configurations: config)
+    let container = try! ModelContainer(for: Task.self, configurations: config)
     
-    let entry = TimeEntry(taskDescription: "Sample Task")
-    container.mainContext.insert(entry)
+    let task = Task(taskDescription: "Sample Task")
+    container.mainContext.insert(task)
     
-    let manager = TimerManager(modelContext: container.mainContext)
+    let manager = AppManager(modelContext: container.mainContext)
     
-    return EditTimeEntryView(entry: entry)
+    return EditTaskView(task: task)
         .modelContainer(container)
         .environment(manager)
 }

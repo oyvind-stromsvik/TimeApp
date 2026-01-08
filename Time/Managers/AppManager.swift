@@ -3,7 +3,7 @@ import SwiftUI
 import SwiftData
 
 @Observable
-class TimerManager {
+class AppManager {
     private var timer: Timer?
     private var modelContext: ModelContext
     
@@ -26,40 +26,40 @@ class TimerManager {
     }
     
     func startNewTimer(description: String, startTime: Date = Date()) {
-        addEntry(description: description, startTime: startTime, isActive: true)
+        addNewTask(description: description, startTime: startTime, isActive: true)
     }
-    
-    func addEntry(description: String, startTime: Date, endTime: Date? = nil, isActive: Bool = false) {
-        let newEntry = TimeEntry(taskDescription: description, startTime: startTime, isActive: isActive)
-        newEntry.endTime = endTime
-        modelContext.insert(newEntry)
+
+    func stopTimer(_ task: Task) {
+        task.stop()
+        save()
+    }
+
+    func addNewTask(description: String, startTime: Date, endTime: Date? = nil, isActive: Bool = false) {
+        let newTask = Task(taskDescription: description, startTime: startTime, isActive: isActive)
+        newTask.endTime = endTime
+        modelContext.insert(newTask)
+        save()
+    }
+
+    func updateTask(_ task: Task, startTime: Date, endTime: Date?, description: String) {
+        task.update(startTime: startTime, endTime: endTime, description: description)
         save()
     }
     
-    func stopTimer(_ entry: TimeEntry) {
-        entry.stop()
-        save()
-    }
-    
-    func deleteTimer(_ entry: TimeEntry) {
-        modelContext.delete(entry)
-        save()
-    }
-    
-    func duplicateTimer(_ entry: TimeEntry) {
-        let newEntry = TimeEntry(
-            taskDescription: entry.taskDescription,
-            startTime: entry.startTime,
-            hexColor: entry.hexColor,
+    func duplicateTask(_ task: Task) {
+        let newTask = Task(
+            taskDescription: task.taskDescription,
+            startTime: task.startTime,
+            hexColor: task.hexColor,
             isActive: false
         )
-        newEntry.endTime = entry.endTime
-        modelContext.insert(newEntry)
+        newTask.endTime = task.endTime
+        modelContext.insert(newTask)
         save()
     }
     
-    func updateTimer(_ entry: TimeEntry, startTime: Date, endTime: Date?, description: String) {
-        entry.update(startTime: startTime, endTime: endTime, description: description)
+    func deleteTask(_ task: Task) {
+        modelContext.delete(task)
         save()
     }
     

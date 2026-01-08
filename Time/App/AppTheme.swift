@@ -62,16 +62,3 @@ struct Shadow {
     let x: CGFloat
     let y: CGFloat
 }
-
-extension View {
-    func premiumCard(color: Color = AppTheme.Colors.cardBackground) -> some View {
-        self.padding(12)
-            .background(color)
-            .clipShape(RoundedRectangle(cornerRadius: AppTheme.cardCornerRadius))
-            .shadow(color: AppTheme.Shadows.soft.color, radius: AppTheme.Shadows.soft.radius, x: AppTheme.Shadows.soft.x, y: AppTheme.Shadows.soft.y)
-    }
-    
-    func glassBackground() -> some View {
-        self.background(.ultraThinMaterial)
-    }
-}

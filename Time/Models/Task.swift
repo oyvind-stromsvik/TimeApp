@@ -2,7 +2,7 @@ import Foundation
 import SwiftData
 
 @Model
-final class TimeEntry: Identifiable {
+final class Task: Identifiable {
     var id: UUID
     var taskDescription: String
     var startTime: Date
@@ -59,8 +59,8 @@ final class TimeEntry: Identifiable {
         self.isActive = (endTime == nil)
     }
     
-    // Helper to check if this entry overlaps with another on the same day
-    func overlaps(with other: TimeEntry) -> Bool {
+    // Helper to check if this task overlaps with another on the same day
+    func overlaps(with other: Task) -> Bool {
         let selfEnd = endTime ?? Date()
         let otherEnd = other.endTime ?? Date()
         return startTime < otherEnd && other.startTime < selfEnd

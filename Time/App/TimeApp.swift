@@ -4,18 +4,18 @@ import SwiftData
 @main
 struct TimeApp: App {
     let sharedModelContainer: ModelContainer
-    let timerManager: TimerManager
+    let manager: AppManager
     
     init() {
         let schema = Schema([
-            TimeEntry.self,
+            Task.self,
         ])
         let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
         
         do {
             let container = try ModelContainer(for: schema, configurations: [modelConfiguration])
             self.sharedModelContainer = container
-            self.timerManager = TimerManager(modelContext: container.mainContext)
+            self.manager = AppManager(modelContext: container.mainContext)
             
             // Disable native macOS window tabbing
             NSWindow.allowsAutomaticWindowTabbing = false
@@ -27,7 +27,7 @@ struct TimeApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView()
-                .environment(timerManager)
+                .environment(manager)
         }
         .modelContainer(sharedModelContainer)
         .commands {
