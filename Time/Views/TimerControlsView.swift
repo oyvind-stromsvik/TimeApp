@@ -35,18 +35,11 @@ struct TimerControlsView: View {
                             .font(.system(size: 12, weight: .bold))
                             .foregroundColor(.white)
                             .frame(width: 32, height: 32)
-                            .background {
-                                if newTimerDescription.isEmpty {
-                                    Color.secondary.opacity(0.3)
-                                } else {
-                                    AppTheme.Gradients.accentGradient
-                                }
-                            }
+                            .background(AppTheme.Gradients.accentGradient)
                             .clipShape(Circle())
-                            .shadow(color: Color.blue.opacity(newTimerDescription.isEmpty ? 0 : 0.2), radius: 4, x: 0, y: 2)
+                            .shadow(color: Color.blue.opacity(0.2), radius: 4, x: 0, y: 2)
                     }
                     .buttonStyle(.plain)
-                    .disabled(newTimerDescription.isEmpty)
                 }
                 .padding(.horizontal, 16)
                 .padding(.bottom, 20)
@@ -89,8 +82,8 @@ struct TimerControlsView: View {
     }
     
     private func startTimer() {
-        guard !newTimerDescription.isEmpty else { return }
-        manager.startNewTimer(description: newTimerDescription)
+        let description = newTimerDescription.isEmpty ? "New task" : newTimerDescription
+        manager.startNewTimer(description: description)
         newTimerDescription = ""
     }
 }

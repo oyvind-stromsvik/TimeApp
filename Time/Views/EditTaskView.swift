@@ -5,25 +5,49 @@ struct EditTaskView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(AppManager.self) private var manager
     @Environment(\.dismiss) private var dismiss
-    
+
     let task: Task
-    
+    @Binding var hasUnsavedChangesBinding: Bool
+    var onSave: (() -> Void)?
+    var onDiscard: (() -> Void)?
+
     @State private var taskDescription: String
     @State private var startTime: Date
     @State private var endTime: Date
     @State private var isActive: Bool
     @State private var durationString: String = ""
-    
-    init(task: Task) {
+    @State private var showingDiscardAlert = false
+
+    private let originalDescription: String
+    private let originalStartTime: Date
+    private let originalEndTime: Date
+    private let originalIsActive: Bool
+
+    init(task: Task, hasUnsavedChanges: Binding<Bool>, onSave: (() -> Void)? = nil, onDiscard: (() -> Void)? = nil) {
         self.task = task
+        self._hasUnsavedChangesBinding = hasUnsavedChanges
+        self.onSave = onSave
+        self.onDiscard = onDiscard
         self._taskDescription = State(initialValue: task.taskDescription)
         self._startTime = State(initialValue: task.startTime)
         self._endTime = State(initialValue: task.endTime ?? Date())
         self._isActive = State(initialValue: task.isActive)
-        
+
         self._durationString = State(initialValue: Task.formatDuration(task.duration))
+
+        self.originalDescription = task.taskDescription
+        self.originalStartTime = task.startTime
+        self.originalEndTime = task.endTime ?? Date()
+        self.originalIsActive = task.isActive
     }
-    
+
+    private var hasUnsavedChanges: Bool {
+        taskDescription != originalDescription ||
+        abs(startTime.timeIntervalSince(originalStartTime)) > 1 ||
+        abs(endTime.timeIntervalSince(originalEndTime)) > 1 ||
+        isActive != originalIsActive
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             // Header
@@ -31,11 +55,17 @@ struct EditTaskView: View {
                 Text("Edit Task")
                     .font(.system(size: 16, weight: .semibold))
                     .foregroundStyle(AppTheme.Colors.textPrimary)
-                
+
                 Spacer()
-                
+
                 Button {
-                    dismiss()
+                    if hasUnsavedChanges {
+                        showingDiscardAlert = true
+                    } else {
+                        hasUnsavedChangesBinding = false
+                        onDiscard?()
+                        dismiss()
+                    }
                 } label: {
                     Image(systemName: "xmark.circle.fill")
                         .font(.system(size: 20))
@@ -65,6 +95,7 @@ struct EditTaskView: View {
                                 RoundedRectangle(cornerRadius: 5)
                                     .stroke(Color.secondary.opacity(0.1), lineWidth: 1)
                             )
+                            .onSubmit(saveChanges)
                     }
                     
                     // Time Range
@@ -86,6 +117,7 @@ struct EditTaskView: View {
                             .onChange(of: durationString) { _, newValue in
                                 updateTimesFromDuration()
                             }
+                            .onSubmit(saveChanges)
                         HStack(spacing: 10) {
                             DatePicker("", selection: $startTime, displayedComponents: .hourAndMinute)
                                 .datePickerStyle(.stepperField)
@@ -158,6 +190,24 @@ struct EditTaskView: View {
         }
         .frame(width: 300)
         .background(AppTheme.Colors.background)
+        .interactiveDismissDisabled(hasUnsavedChanges)
+        .alert("Unsaved Changes", isPresented: $showingDiscardAlert) {
+            Button("Discard", role: .destructive) {
+                hasUnsavedChangesBinding = false
+                onDiscard?()
+                dismiss()
+            }
+            Button("Save") {
+                saveChanges()
+            }
+            Button("Cancel", role: .cancel) { }
+        } message: {
+            Text("You have unsaved changes. Would you like to save or discard them?")
+        }
+        .onChange(of: taskDescription) { hasUnsavedChangesBinding = hasUnsavedChanges }
+        .onChange(of: startTime) { hasUnsavedChangesBinding = hasUnsavedChanges }
+        .onChange(of: endTime) { hasUnsavedChangesBinding = hasUnsavedChanges }
+        .onChange(of: isActive) { hasUnsavedChangesBinding = hasUnsavedChanges }
     }
     
     private func updateDurationFromTimes() {
@@ -187,6 +237,8 @@ struct EditTaskView: View {
             endTime: isActive ? nil : endTime,
             description: taskDescription
         )
+        hasUnsavedChangesBinding = false
+        onSave?()
         dismiss()
     }
     
@@ -196,16 +248,24 @@ struct EditTaskView: View {
     }
 }
 
+struct EditTaskViewPreview: View {
+    @State private var hasUnsavedChanges = false
+
+    var body: some View {
+        let config = ModelConfiguration(isStoredInMemoryOnly: true)
+        let container = try! ModelContainer(for: Task.self, configurations: config)
+
+        let task = Task(taskDescription: "Sample Task")
+        container.mainContext.insert(task)
+
+        let manager = AppManager(modelContext: container.mainContext)
+
+        return EditTaskView(task: task, hasUnsavedChanges: $hasUnsavedChanges)
+            .modelContainer(container)
+            .environment(manager)
+    }
+}
+
 #Preview {
-    let config = ModelConfiguration(isStoredInMemoryOnly: true)
-    let container = try! ModelContainer(for: Task.self, configurations: config)
-    
-    let task = Task(taskDescription: "Sample Task")
-    container.mainContext.insert(task)
-    
-    let manager = AppManager(modelContext: container.mainContext)
-    
-    return EditTaskView(task: task)
-        .modelContainer(container)
-        .environment(manager)
+    EditTaskViewPreview()
 }

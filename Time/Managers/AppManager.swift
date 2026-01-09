@@ -34,11 +34,13 @@ class AppManager {
         save()
     }
 
-    func addNewTask(description: String, startTime: Date, endTime: Date? = nil, isActive: Bool = false) {
+    @discardableResult
+    func addNewTask(description: String, startTime: Date, endTime: Date? = nil, isActive: Bool = false) -> Task {
         let newTask = Task(taskDescription: description, startTime: startTime, isActive: isActive)
         newTask.endTime = endTime
         modelContext.insert(newTask)
         save()
+        return newTask
     }
 
     func updateTask(_ task: Task, startTime: Date, endTime: Date?, description: String) {

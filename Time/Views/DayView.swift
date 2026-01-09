@@ -10,6 +10,9 @@ struct DayView: View {
     // Zoom/Scale: Height of one hour in points
     @State private var hourHeight: CGFloat = 64
     @State private var selectedTask: Task?
+    @State private var hasUnsavedChanges = false
+    @State private var showingDiscardAlert = false
+    @State private var popoverJustClosed = false
     
     init(date: Date) {
         self.date = date
@@ -42,8 +45,12 @@ struct DayView: View {
                     TimelineGrid(hourHeight: hourHeight)
                         .onTapGesture { location in
                             if selectedTask != nil {
-                                selectedTask = nil
-                            } else {
+                                if hasUnsavedChanges {
+                                    showingDiscardAlert = true
+                                } else {
+                                    selectedTask = nil
+                                }
+                            } else if !popoverJustClosed {
                                 createTaskAtPosition(location: location)
                             }
                         }
@@ -53,7 +60,8 @@ struct DayView: View {
                         tasks: filteredTasks,
                         hourHeight: hourHeight,
                         date: date,
-                        selectedTask: $selectedTask
+                        selectedTask: $selectedTask,
+                        hasUnsavedChanges: $hasUnsavedChanges
                     )
                     
                     // Current Time Indicator
@@ -93,6 +101,23 @@ struct DayView: View {
             }
         }
         .background(AppTheme.Colors.background)
+        .onChange(of: selectedTask) { oldValue, newValue in
+            if oldValue != nil && newValue == nil {
+                popoverJustClosed = true
+                DispatchQueue.main.async {
+                    popoverJustClosed = false
+                }
+            }
+        }
+        .alert("Unsaved Changes", isPresented: $showingDiscardAlert) {
+            Button("Discard", role: .destructive) {
+                hasUnsavedChanges = false
+                selectedTask = nil
+            }
+            Button("Keep Editing", role: .cancel) { }
+        } message: {
+            Text("You have unsaved changes. Do you want to discard them?")
+        }
     }
     
     private var totalTimeFormatted: String {
@@ -110,10 +135,11 @@ struct DayView: View {
         components.hour = Int(hour)
         let minute = Int((hour.truncatingRemainder(dividingBy: 1)) * 60)
         components.minute = (minute / 5) * 5
-        
+
         if let startTime = calendar.date(from: components) {
             let endTime = startTime.addingTimeInterval(1800) // 30 minutes
-            manager.addNewTask(description: "New Task", startTime: startTime, endTime: endTime, isActive: false)
+            let newTask = manager.addNewTask(description: "New Task", startTime: startTime, endTime: endTime, isActive: false)
+            selectedTask = newTask
         }
     }
 }
@@ -191,11 +217,12 @@ struct TaskLayoutView: View {
     let hourHeight: CGFloat
     let date: Date
     @Binding var selectedTask: Task?
-    
+    @Binding var hasUnsavedChanges: Bool
+
     var body: some View {
         let _ = tasks.map { ($0.startTime, $0.endTime) }
         let groupedTasks = calculateHorizontalLayout()
-        
+
         GeometryReader { geo in
             ZStack(alignment: .topLeading) {
                 ForEach(groupedTasks, id: \.task.id) { layout in
@@ -203,7 +230,8 @@ struct TaskLayoutView: View {
                         task: layout.task,
                         hourHeight: hourHeight,
                         date: date,
-                        selectedTask: $selectedTask
+                        selectedTask: $selectedTask,
+                        hasUnsavedChanges: $hasUnsavedChanges
                     )
                     .frame(width: geo.size.width * layout.widthPercent, height: calculateHeight(for: layout.task))
                     .offset(x: geo.size.width * layout.offsetXPercent, y: calculateY(for: layout.task))
@@ -292,12 +320,13 @@ struct TaskBlock: View {
     let hourHeight: CGFloat
     let date: Date
     @Binding var selectedTask: Task?
-    
+    @Binding var hasUnsavedChanges: Bool
+
     @Environment(AppManager.self) private var manager
     @State private var isHovering = false
     @State private var isDragging = false
     @State private var isResizing = false
-    
+
     @State private var dragInitialStartTime: Date?
     @State private var dragInitialEndTime: Date?
     
@@ -334,7 +363,7 @@ struct TaskBlock: View {
             get: { selectedTask?.id == task.id ? selectedTask : nil },
             set: { if $0 == nil { selectedTask = nil } }
         )) { task in
-            EditTaskView(task: task)
+            EditTaskView(task: task, hasUnsavedChanges: $hasUnsavedChanges)
         }
         .overlay(alignment: .top) {
             if isDragging || isResizing { TimeLabel(date: task.startTime, isTop: true) }
