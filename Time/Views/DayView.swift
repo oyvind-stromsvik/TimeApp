@@ -376,7 +376,7 @@ struct TaskBlock: View {
             Divider()
             Button("Delete", role: .destructive) { manager.deleteTask(task) }
         }
-        .onHover { hovering in withAnimation(.easeInOut(duration: 0.2)) { isHovering = hovering } }
+        .onHover { hovering in isHovering = hovering }
         .cursor(isHovering ? .pointingHand : .arrow)
         .simultaneousGesture(
             DragGesture(minimumDistance: 4, coordinateSpace: .named("timeline"))

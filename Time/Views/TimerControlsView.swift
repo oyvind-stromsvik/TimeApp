@@ -10,7 +10,6 @@ struct TimerControlsView: View {
     
     var body: some View {
         VStack(spacing: 0) {
-            // Quick Start Field
             VStack(alignment: .leading, spacing: 8) {
                 Text("START NEW TIMER")
                     .font(.system(size: 10, weight: .bold))
@@ -37,7 +36,6 @@ struct TimerControlsView: View {
                             .frame(width: 32, height: 32)
                             .background(AppTheme.Gradients.accentGradient)
                             .clipShape(Circle())
-                            .shadow(color: Color.blue.opacity(0.2), radius: 4, x: 0, y: 2)
                     }
                     .buttonStyle(.plain)
                 }
@@ -88,9 +86,13 @@ struct TimerControlsView: View {
     }
 }
 
+/**
+ * An active task/timer in the sidebar.
+ */
 struct ActiveTimerRow: View {
     @Bindable var task: Task
     @Environment(AppManager.self) private var manager
+    @State private var isHovering = false
     
     var body: some View {
         let _ = manager.lastTick
@@ -105,10 +107,12 @@ struct ActiveTimerRow: View {
                         .fill(Color.blue)
                         .frame(width: 6, height: 6)
                         .symbolEffect(.pulse, value: manager.lastTick)
+                        .offset(x: 1)
                     
                     Text(task.formattedDuration)
                         .font(.system(size: 11, weight: .medium, design: .monospaced))
                         .foregroundColor(.blue)
+                        .symbolEffect(.pulse)
                 }
             }
             
@@ -123,11 +127,14 @@ struct ActiveTimerRow: View {
                     .font(.system(size: 10, weight: .bold))
                     .foregroundColor(.white)
                     .frame(width: 26, height: 26)
-                    .background(Color.red.opacity(0.9))
+                    .background(Color.red.opacity(1))
                     .clipShape(Circle())
-                    .shadow(color: Color.red.opacity(0.2), radius: 4, x: 0, y: 2)
+                    .cursor(.pointingHand)
             }
             .buttonStyle(.plain)
+            .onHover { hovering in
+                isHovering = hovering
+            }
         }
         .padding(.vertical, 4)
     }
