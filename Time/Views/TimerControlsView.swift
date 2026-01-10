@@ -13,30 +13,23 @@ struct TimerControlsView: View {
         VStack(spacing: 0) {
             VStack(alignment: .leading, spacing: 8) {
                 Text("START NEW TIMER")
-                    .font(.system(size: 10, weight: .bold))
-                    .foregroundStyle(.secondary)
+                    .appSectionHeader()
                     .padding(.horizontal, 16)
                     .padding(.top, 16)
                 
                 HStack(spacing: 8) {
                     TextField("What are you working on?", text: $newTimerDescription)
                         .textFieldStyle(.plain)
-                        .padding(10)
-                        .background(AppTheme.Colors.cardBackground)
-                        .clipShape(RoundedRectangle(cornerRadius: 8))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 8)
-                                .stroke(Color.secondary.opacity(0.1), lineWidth: 1)
-                        )
+                        .appCardField(padding: 10, cornerRadius: 8)
                         .onSubmit(startTimer)
                     
                     Button(action: startTimer) {
-                        Image(systemName: "play.fill")
-                            .font(.system(size: 12, weight: .bold))
-                            .foregroundColor(.white)
-                            .frame(width: 32, height: 32)
-                            .background(AppTheme.Gradients.accentGradient)
-                            .clipShape(Circle())
+                        AppCircleIcon(
+                            systemName: "play.fill",
+                            size: 32,
+                            iconSize: 12,
+                            background: AppTheme.Gradients.accentGradient
+                        )
                     }
                     .buttonStyle(.plain)
                 }
@@ -50,13 +43,15 @@ struct TimerControlsView: View {
                 VStack(spacing: 16) {
                     Image(systemName: "timer")
                         .font(.system(size: 40, weight: .ultraLight))
-                        .foregroundStyle(.secondary.opacity(0.3))
+                        .foregroundStyle(AppTheme.Colors.textSecondary.opacity(AppTheme.Opacity.secondaryTextFaint))
+                    
+                    
                     Text("No Active Timers")
                         .font(.system(size: 14, weight: .medium))
                         .foregroundStyle(.secondary)
                     Text("Start a new timer to begin tracking time.")
                         .font(.system(size: 11))
-                        .foregroundStyle(.secondary.opacity(0.6))
+                        .foregroundStyle(AppTheme.Colors.textSecondary.opacity(AppTheme.Opacity.secondaryTextStrong))
                         .multilineTextAlignment(.center)
                         .padding(.horizontal, 40)
                 }
@@ -69,8 +64,7 @@ struct TimerControlsView: View {
                         }
                     } header: {
                         Text("ACTIVE TIMERS")
-                            .font(.system(size: 10, weight: .bold))
-                            .foregroundStyle(.secondary)
+                            .appSectionHeader()
                             .padding(.vertical, 8)
                     }
                 }
@@ -106,14 +100,14 @@ struct ActiveTimerRow: View {
                 
                 HStack(spacing: 6) {
                     Circle()
-                        .fill(Color.blue)
+                        .fill(AppTheme.Colors.activeTimer)
                         .frame(width: 6, height: 6)
                         .symbolEffect(.pulse, value: manager.lastTick)
                         .offset(x: 1)
                     
                     Text(task.formattedDuration)
                         .font(.system(size: 11, weight: .medium, design: .monospaced))
-                        .foregroundColor(.blue)
+                        .foregroundColor(AppTheme.Colors.activeTimer)
                         .symbolEffect(.pulse)
                 }
             }
@@ -125,13 +119,13 @@ struct ActiveTimerRow: View {
                     manager.stopTimer(task, undoManager: undoManager)
                 }
             } label: {
-                Image(systemName: "stop.fill")
-                    .font(.system(size: 10, weight: .bold))
-                    .foregroundColor(.white)
-                    .frame(width: 26, height: 26)
-                    .background(Color.red.opacity(1))
-                    .clipShape(Circle())
-                    .cursor(.pointingHand)
+                AppCircleIcon(
+                    systemName: "stop.fill",
+                    size: 26,
+                    iconSize: 10,
+                    background: AppTheme.Colors.destructive
+                )
+                .cursor(.pointingHand)
             }
             .buttonStyle(.plain)
             .onHover { hovering in

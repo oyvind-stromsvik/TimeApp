@@ -32,7 +32,7 @@ struct ContentView: View {
                             .labelsHidden()
                             .frame(width: 140)
                             .padding(.horizontal, 8)
-                            .background(Color.secondary.opacity(0.05))
+                            .background(AppTheme.Colors.fieldBackground)
                             .cornerRadius(6)
                     }
                     

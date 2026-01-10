@@ -70,51 +70,37 @@ struct EditTaskView: View {
                 } label: {
                     Image(systemName: "xmark.circle.fill")
                         .font(.system(size: 20))
-                        .foregroundColor(.secondary.opacity(0.3))
+                        .foregroundColor(AppTheme.Colors.textSecondary.opacity(AppTheme.Opacity.secondaryTextFaint))
                 }
                 .buttonStyle(.plain)
             }
             .padding(10)
             
-            Divider().opacity(0.5)
+            Divider().opacity(AppTheme.Opacity.divider)
             
             ViewThatFits {
                 VStack(spacing: 20) {
                     // Task Description
                     VStack(alignment: .leading, spacing: 5) {
                         Label("DESCRIPTION", systemImage: "pencil.line")
-                            .font(.system(size: 10, weight: .bold))
-                            .foregroundColor(.secondary)
+                            .appSectionHeader()
                         
                         TextField("What are you working on?", text: $taskDescription)
                             .textFieldStyle(.plain)
                             .font(.system(size: 15))
-                            .padding(10)
-                            .background(AppTheme.Colors.cardBackground)
-                            .cornerRadius(5)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 5)
-                                    .stroke(Color.secondary.opacity(0.1), lineWidth: 1)
-                            )
+                            .appCardField(padding: 10, cornerRadius: 5)
                             .onSubmit(saveChanges)
                     }
                     
                     // Time Range
                     VStack(alignment: .leading, spacing: 5) {
                         Label("DURATION", systemImage: "clock")
-                            .font(.system(size: 10, weight: .bold))
-                            .foregroundColor(.secondary)
+                            .appSectionHeader()
                         
                         TextField("0:00:00", text: $durationString)
                             .textFieldStyle(.plain)
                             .font(.system(size: 20, weight: .medium, design: .monospaced))
-                            .padding(10)
-                            .background(AppTheme.Colors.cardBackground)
-                            .cornerRadius(5)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 5)
-                                    .stroke(Color.secondary.opacity(0.1), lineWidth: 1)
-                            )
+                            .appCardField(padding: 10, cornerRadius: 5)
                             .onChange(of: durationString) { _, newValue in
                                 updateTimesFromDuration()
                             }
@@ -124,31 +110,25 @@ struct EditTaskView: View {
                                 .datePickerStyle(.stepperField)
                                 .frame(maxWidth: .infinity)
                                 .onChange(of: startTime) { _, _ in updateDurationFromTimes() }
-                                .padding(5)
-                                .background(AppTheme.Colors.cardBackground)
-                                .cornerRadius(5)
-                                .overlay(RoundedRectangle(cornerRadius: 5).stroke(Color.secondary.opacity(0.1), lineWidth: 1))
+                                .appCardField(padding: 5, cornerRadius: 5)
                             
                             Image(systemName: "arrow.right")
                                 .font(.system(size: 13, weight: .bold))
-                                .foregroundColor(.secondary.opacity(0.5))
+                                .foregroundColor(AppTheme.Colors.textSecondary.opacity(AppTheme.Opacity.secondaryTextMedium))
                             
                             DatePicker("", selection: $endTime, displayedComponents: .hourAndMinute)
                                 .datePickerStyle(.stepperField)
                                 .frame(maxWidth: .infinity)
                                 .disabled(isActive)
                                 .onChange(of: endTime) { _, _ in updateDurationFromTimes() }
-                                .padding(5)
-                                .background(isActive ? Color.secondary.opacity(0.05) : AppTheme.Colors.cardBackground)
-                                .cornerRadius(5)
-                                .overlay(RoundedRectangle(cornerRadius: 5).stroke(Color.secondary.opacity(0.1), lineWidth: 1))
+                                .appCardField(padding: 5, cornerRadius: 5, disabledStyle: isActive)
                         }
                     }
        
                     Toggle(isOn: $isActive) {
                         HStack {
                             Image(systemName: "timer")
-                                .foregroundColor(isActive ? .blue : .secondary)
+                                .foregroundColor(isActive ? AppTheme.Colors.accent : .secondary)
                             Text("Is active")
                                 .font(.system(size: 13, weight: .medium))
                         }
@@ -159,7 +139,7 @@ struct EditTaskView: View {
                 .padding(10)
             }
             
-            Divider().opacity(0.5)
+            Divider().opacity(AppTheme.Opacity.divider)
             
             // Footer Buttons
             HStack(spacing: 50) {
@@ -167,27 +147,18 @@ struct EditTaskView: View {
                     deleteTask()
                 } label: {
                     Label("Delete", systemImage: "trash")
-                        .foregroundColor(.red)
-                        .padding(.vertical, 10)
-                        .padding(.horizontal, 20)
-                        .cornerRadius(10)
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(AppDestructiveButtonStyle())
                 
                 Button {
                     saveChanges()
                 } label: {
                     Text("Save Changes")
-                        .foregroundColor(.white)
-                        .padding(.vertical, 10)
-                        .padding(.horizontal, 20)
-                        .background(AppTheme.Gradients.accentGradient)
-                        .cornerRadius(10)
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(AppPrimaryButtonStyle())
             }
             .padding(10)
-            .background(Color.secondary.opacity(0.02))
+            .background(AppTheme.Colors.footerBackground)
         }
         .frame(width: 300)
         .background(AppTheme.Colors.background)
