@@ -1,4 +1,5 @@
 import SwiftUI
+import AppKit
 import SwiftData
 
 @main
@@ -32,6 +33,17 @@ struct TimeApp: App {
         .modelContainer(sharedModelContainer)
         .commands {
             SidebarCommands()
+            CommandGroup(replacing: .undoRedo) {
+                Button("Undo") {
+                    NSApp.sendAction(Selector(("undo:")), to: nil, from: nil)
+                }
+                .keyboardShortcut("z", modifiers: .command)
+
+                Button("Redo") {
+                    NSApp.sendAction(Selector(("redo:")), to: nil, from: nil)
+                }
+                .keyboardShortcut("Z", modifiers: [.command, .shift])
+            }
         }
     }
 }

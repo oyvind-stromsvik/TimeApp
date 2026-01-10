@@ -5,6 +5,7 @@ struct DayView: View {
     let date: Date
     @Query private var tasks: [Task]
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.undoManager) private var undoManager
     @Environment(AppManager.self) private var manager
     
     // Zoom/Scale: Height of one hour in points
@@ -138,7 +139,7 @@ struct DayView: View {
 
         if let startTime = calendar.date(from: components) {
             let endTime = startTime.addingTimeInterval(1800) // 30 minutes
-            let newTask = manager.addNewTask(description: "New Task", startTime: startTime, endTime: endTime, isActive: false)
+            let newTask = manager.addNewTask(description: "New Task", startTime: startTime, endTime: endTime, isActive: false, undoManager: undoManager)
             selectedTask = newTask
         }
     }
@@ -323,12 +324,15 @@ struct TaskBlock: View {
     @Binding var hasUnsavedChanges: Bool
 
     @Environment(AppManager.self) private var manager
+    @Environment(\.undoManager) private var undoManager
     @State private var isHovering = false
     @State private var isDragging = false
     @State private var isResizing = false
 
     @State private var dragInitialStartTime: Date?
     @State private var dragInitialEndTime: Date?
+    @State private var dragInitialIsActive: Bool?
+    @State private var dragInitialDuration: TimeInterval?
     
     var body: some View {
         let _ = task.isActive ? manager.lastTick : .distantPast
@@ -372,9 +376,9 @@ struct TaskBlock: View {
             if isDragging || isResizing { TimeLabel(date: task.endTime ?? Date(), isTop: false) }
         }
         .contextMenu {
-            Button("Duplicate") { manager.duplicateTask(task) }
+            Button("Duplicate") { manager.duplicateTask(task, undoManager: undoManager) }
             Divider()
-            Button("Delete", role: .destructive) { manager.deleteTask(task) }
+            Button("Delete", role: .destructive) { manager.deleteTask(task, undoManager: undoManager) }
         }
         .onHover { hovering in isHovering = hovering }
         .cursor(isHovering ? .pointingHand : .arrow)
@@ -383,15 +387,31 @@ struct TaskBlock: View {
                 .onChanged { value in
                     if dragInitialStartTime == nil {
                         dragInitialStartTime = task.startTime
-                        dragInitialEndTime = task.endTime ?? Date()
+                        dragInitialEndTime = task.endTime
+                        dragInitialIsActive = task.isActive
+                        let endForDuration = task.endTime ?? Date()
+                        dragInitialDuration = endForDuration.timeIntervalSince(task.startTime)
                     }
                     isDragging = true
                     updatePosition(offset: value.translation.height)
                 }
                 .onEnded { _ in
+                    if let oldStartTime = dragInitialStartTime,
+                       let oldIsActive = dragInitialIsActive {
+                        manager.registerUndoForTimeChange(
+                            taskID: task.id,
+                            oldStartTime: oldStartTime,
+                            oldEndTime: dragInitialEndTime,
+                            oldIsActive: oldIsActive,
+                            undoManager: undoManager,
+                            actionName: "Move Task"
+                        )
+                    }
                     isDragging = false
                     dragInitialStartTime = nil
                     dragInitialEndTime = nil
+                    dragInitialIsActive = nil
+                    dragInitialDuration = nil
                     manager.save()
                 }
         )
@@ -418,31 +438,64 @@ struct TaskBlock: View {
     }
     
     private func handleResizeEnded() {
+        if let oldStartTime = dragInitialStartTime,
+           let oldIsActive = dragInitialIsActive {
+            manager.registerUndoForTimeChange(
+                taskID: task.id,
+                oldStartTime: oldStartTime,
+                oldEndTime: dragInitialEndTime,
+                oldIsActive: oldIsActive,
+                undoManager: undoManager,
+                actionName: "Resize Task"
+            )
+        }
         isResizing = false
         dragInitialStartTime = nil
         dragInitialEndTime = nil
+        dragInitialIsActive = nil
+        dragInitialDuration = nil
         manager.save()
     }
     
     private func updatePosition(offset: CGFloat) {
-        guard let baseStart = dragInitialStartTime, let baseEnd = dragInitialEndTime else { return }
+        guard let baseStart = dragInitialStartTime, let duration = dragInitialDuration else { return }
         let timeDiff = (offset / hourHeight) * 3600.0
         let newStart = snap(baseStart.addingTimeInterval(timeDiff))
-        let duration = baseEnd.timeIntervalSince(baseStart)
         task.startTime = newStart
-        task.endTime = newStart.addingTimeInterval(duration)
+        if dragInitialEndTime != nil {
+            task.endTime = newStart.addingTimeInterval(duration)
+        } else {
+            task.endTime = nil
+        }
+        if let dragInitialIsActive {
+            task.isActive = dragInitialIsActive
+        }
     }
     
     private func updateStartTime(offset: CGFloat) {
-        if dragInitialStartTime == nil { dragInitialStartTime = task.startTime; dragInitialEndTime = task.endTime ?? Date() }
-        guard let baseStart = dragInitialStartTime, let baseEnd = dragInitialEndTime else { return }
+        if dragInitialStartTime == nil {
+            dragInitialStartTime = task.startTime
+            dragInitialEndTime = task.endTime
+            dragInitialIsActive = task.isActive
+            let endForDuration = task.endTime ?? Date()
+            dragInitialDuration = endForDuration.timeIntervalSince(task.startTime)
+        }
+        guard let baseStart = dragInitialStartTime else { return }
+        let baseEnd = dragInitialEndTime ?? Date()
         let newStart = snap(baseStart.addingTimeInterval((offset / hourHeight) * 3600.0))
         if newStart < baseEnd.addingTimeInterval(-300) { task.startTime = newStart }
     }
     
     private func updateEndTime(offset: CGFloat) {
-        if dragInitialEndTime == nil { dragInitialEndTime = task.endTime ?? Date(); dragInitialStartTime = task.startTime }
-        guard let baseStart = dragInitialStartTime, let baseEnd = dragInitialEndTime else { return }
+        if dragInitialEndTime == nil {
+            dragInitialEndTime = task.endTime
+            dragInitialStartTime = task.startTime
+            dragInitialIsActive = task.isActive
+            let endForDuration = task.endTime ?? Date()
+            dragInitialDuration = endForDuration.timeIntervalSince(task.startTime)
+        }
+        guard let baseStart = dragInitialStartTime else { return }
+        let baseEnd = dragInitialEndTime ?? Date()
         let newEnd = snap(baseEnd.addingTimeInterval((offset / hourHeight) * 3600.0))
         if newEnd > baseStart.addingTimeInterval(300) { task.endTime = newEnd; task.isActive = false }
     }

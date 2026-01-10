@@ -5,6 +5,7 @@ struct EditTaskView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(AppManager.self) private var manager
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.undoManager) private var undoManager
 
     let task: Task
     @Binding var hasUnsavedChangesBinding: Bool
@@ -235,7 +236,8 @@ struct EditTaskView: View {
             task,
             startTime: startTime,
             endTime: isActive ? nil : endTime,
-            description: taskDescription
+            description: taskDescription,
+            undoManager: undoManager
         )
         hasUnsavedChangesBinding = false
         onSave?()
@@ -243,7 +245,7 @@ struct EditTaskView: View {
     }
     
     private func deleteTask() {
-        manager.deleteTask(task)
+        manager.deleteTask(task, undoManager: undoManager)
         dismiss()
     }
 }

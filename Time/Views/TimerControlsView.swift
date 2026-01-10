@@ -4,6 +4,7 @@ import SwiftData
 struct TimerControlsView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(AppManager.self) private var manager
+    @Environment(\.undoManager) private var undoManager
     @Query(filter: #Predicate<Task> { $0.isActive == true }, sort: \Task.startTime) private var activeTasks: [Task]
     
     @State private var newTimerDescription = ""
@@ -81,7 +82,7 @@ struct TimerControlsView: View {
     
     private func startTimer() {
         let description = newTimerDescription.isEmpty ? "New task" : newTimerDescription
-        manager.startNewTimer(description: description)
+        manager.addNewTask(description: description, startTime: Date(), endTime: nil, isActive: true, undoManager: undoManager)
         newTimerDescription = ""
     }
 }
@@ -92,6 +93,7 @@ struct TimerControlsView: View {
 struct ActiveTimerRow: View {
     @Bindable var task: Task
     @Environment(AppManager.self) private var manager
+    @Environment(\.undoManager) private var undoManager
     @State private var isHovering = false
     
     var body: some View {
@@ -120,7 +122,7 @@ struct ActiveTimerRow: View {
             
             Button {
                 withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                    manager.stopTimer(task)
+                    manager.stopTimer(task, undoManager: undoManager)
                 }
             } label: {
                 Image(systemName: "stop.fill")
