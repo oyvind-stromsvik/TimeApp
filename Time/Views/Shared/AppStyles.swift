@@ -24,11 +24,11 @@ private struct AppCardFieldModifier: ViewModifier {
     func body(content: Content) -> some View {
         content
             .padding(padding)
-            .background(isDisabledStyle ? AppTheme.Colors.fieldDisabledBackground : AppTheme.Colors.cardBackground)
+            .background(isDisabledStyle ? AppTheme.Colors.fieldDisabledBackground : AppTheme.Colors.fieldBackground)
             .cornerRadius(cornerRadius)
             .overlay(
                 RoundedRectangle(cornerRadius: cornerRadius)
-                    .stroke(AppTheme.Colors.fieldBorder, lineWidth: 1)
+                    .stroke(AppTheme.Colors.fieldBorder.opacity(0.9), lineWidth: 1)
             )
     }
 }
@@ -82,7 +82,9 @@ struct AppPrimaryButtonStyle: ButtonStyle {
             .padding(.horizontal, 20)
             .background(AppTheme.Gradients.accentGradient)
             .cornerRadius(cornerRadius)
-            .opacity(configuration.isPressed ? 0.9 : 1)
+            .scaleEffect(configuration.isPressed ? 0.98 : 1)
+            .opacity(configuration.isPressed ? 0.92 : 1)
+            .animation(.snappy(duration: 0.12), value: configuration.isPressed)
     }
 }
 
@@ -102,5 +104,17 @@ struct AppDestructiveButtonStyle: ButtonStyle {
                 RoundedRectangle(cornerRadius: cornerRadius)
                     .stroke(AppTheme.Colors.destructive.opacity(0.25), lineWidth: 1)
             )
+            .scaleEffect(configuration.isPressed ? 0.98 : 1)
+            .animation(.snappy(duration: 0.12), value: configuration.isPressed)
+    }
+}
+
+struct PressedButtonStyle: ButtonStyle {
+    var cornerRadius: CGFloat = 10
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? 0.90 : 1)
+            .animation(.snappy(duration: 0.1), value: configuration.isPressed)
     }
 }

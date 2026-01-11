@@ -51,40 +51,31 @@ struct EditTaskView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            // Header
-            HStack {
-                Text("Edit Task")
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundStyle(AppTheme.Colors.textPrimary)
-
-                Spacer()
-
-                Button {
-                    if hasUnsavedChanges {
-                        showingDiscardAlert = true
-                    } else {
-                        hasUnsavedChangesBinding = false
-                        onDiscard?()
-                        dismiss()
-                    }
-                } label: {
-                    Image(systemName: "xmark.circle.fill")
-                        .font(.system(size: 20))
-                        .foregroundColor(AppTheme.Colors.textSecondary.opacity(AppTheme.Opacity.secondaryTextFaint))
-                }
-                .buttonStyle(.plain)
-            }
-            .padding(10)
-            
-            Divider().opacity(AppTheme.Opacity.divider)
-            
             ViewThatFits {
                 VStack(spacing: 20) {
                     // Task Description
                     VStack(alignment: .leading, spacing: 5) {
-                        Label("DESCRIPTION", systemImage: "pencil.line")
-                            .appSectionHeader()
-                        
+                        HStack {
+                            Label("DESCRIPTION", systemImage: "pencil.line")
+                                .appSectionHeader()
+                            
+                            Spacer()
+                            
+                            // Close button - Just snuck it in here
+                            Button {
+                                if hasUnsavedChanges {
+                                    showingDiscardAlert = true
+                                } else {
+                                    hasUnsavedChangesBinding = false
+                                    onDiscard?()
+                                    dismiss()
+                                }
+                            } label: {
+                                Image(systemName: "xmark")
+                            }
+                            .buttonStyle(.plain)
+                        }
+
                         TextField("What are you working on?", text: $taskDescription)
                             .textFieldStyle(.plain)
                             .font(.system(size: 15))
@@ -92,7 +83,7 @@ struct EditTaskView: View {
                             .onSubmit(saveChanges)
                     }
                     
-                    // Time Range
+                    // Duration & Time Range
                     VStack(alignment: .leading, spacing: 5) {
                         Label("DURATION", systemImage: "clock")
                             .appSectionHeader()
@@ -142,18 +133,21 @@ struct EditTaskView: View {
             Divider().opacity(AppTheme.Opacity.divider)
             
             // Footer Buttons
-            HStack(spacing: 50) {
+            HStack {
                 Button {
                     deleteTask()
                 } label: {
                     Label("Delete", systemImage: "trash")
                 }
-                .buttonStyle(AppDestructiveButtonStyle())
+                .foregroundColor(.red)
+                .buttonStyle(PressedButtonStyle())
+                
+                Spacer()
                 
                 Button {
                     saveChanges()
                 } label: {
-                    Text("Save Changes")
+                    Text("Save")
                 }
                 .buttonStyle(AppPrimaryButtonStyle())
             }
@@ -161,7 +155,7 @@ struct EditTaskView: View {
             .background(AppTheme.Colors.footerBackground)
         }
         .frame(width: 300)
-        .background(AppTheme.Colors.background)
+        .background(AppTheme.Colors.cardBackground)
         .interactiveDismissDisabled(hasUnsavedChanges)
         .alert("Unsaved Changes", isPresented: $showingDiscardAlert) {
             Button("Discard", role: .destructive) {

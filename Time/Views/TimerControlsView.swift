@@ -8,6 +8,8 @@ struct TimerControlsView: View {
     @Query(filter: #Predicate<Task> { $0.isActive == true }, sort: \Task.startTime) private var activeTasks: [Task]
     
     @State private var newTimerDescription = ""
+    @State private var selectedTask: Task?
+    @State private var hasUnsavedChanges = false
     
     var body: some View {
         VStack(spacing: 0) {
@@ -22,6 +24,10 @@ struct TimerControlsView: View {
                         .textFieldStyle(.plain)
                         .appCardField(padding: 10, cornerRadius: 8)
                         .onSubmit(startTimer)
+                        .overlay {
+                            RoundedRectangle(cornerRadius: 8)
+                                .stroke(AppTheme.Colors.separator.opacity(0.35), lineWidth: 1)
+                        }
                     
                     Button(action: startTimer) {
                         AppCircleIcon(
@@ -32,6 +38,8 @@ struct TimerControlsView: View {
                         )
                     }
                     .buttonStyle(.plain)
+                    .scaleEffect(newTimerDescription.isEmpty ? 0.98 : 1)
+                    .animation(.snappy(duration: 0.18), value: newTimerDescription.isEmpty)
                 }
                 .padding(.horizontal, 16)
                 .padding(.bottom, 20)
@@ -60,7 +68,7 @@ struct TimerControlsView: View {
                 List {
                     Section {
                         ForEach(activeTasks) { task in
-                            ActiveTimerRow(task: task)
+                            ActiveTimerRow(task: task, selectedTask: $selectedTask, hasUnsavedChanges: $hasUnsavedChanges)
                         }
                     } header: {
                         Text("ACTIVE TIMERS")
@@ -69,9 +77,10 @@ struct TimerControlsView: View {
                     }
                 }
                 .listStyle(.sidebar)
+                .scrollContentBackground(.hidden)
             }
         }
-        .background(AppTheme.Colors.sidebarBackground)
+        .background(AppTheme.Surfaces.sidebar)
     }
     
     private func startTimer() {
@@ -86,6 +95,9 @@ struct TimerControlsView: View {
  */
 struct ActiveTimerRow: View {
     @Bindable var task: Task
+    @Binding var selectedTask: Task?
+    @Binding var hasUnsavedChanges: Bool
+    
     @Environment(AppManager.self) private var manager
     @Environment(\.undoManager) private var undoManager
     @State private var isHovering = false
@@ -128,11 +140,28 @@ struct ActiveTimerRow: View {
                 .cursor(.pointingHand)
             }
             .buttonStyle(.plain)
-            .onHover { hovering in
-                isHovering = hovering
-            }
         }
         .padding(.vertical, 4)
+        .padding(.horizontal, 6)
+        .contentShape(RoundedRectangle(cornerRadius: 8))
+        .background(
+            RoundedRectangle(cornerRadius: 8)
+                .fill(isHovering ? AppTheme.Colors.tertiaryFill : .clear)
+        )
+        .animation(.snappy(duration: 0.18), value: isHovering)
+        .onTapGesture {
+            selectedTask = task
+        }
+        .popover(item: Binding(
+            get: { selectedTask?.id == task.id ? selectedTask : nil },
+            set: { if $0 == nil { selectedTask = nil } }
+        ), arrowEdge: .trailing) { task in
+            EditTaskView(task: task, hasUnsavedChanges: $hasUnsavedChanges)
+                .presentationCompactAdaptation(.none)
+        }
+        .onHover { hovering in
+            isHovering = hovering
+        }
     }
 }
 
@@ -154,3 +183,4 @@ struct ActiveTimerRow: View {
         .modelContainer(container)
         .environment(manager)
 }
+

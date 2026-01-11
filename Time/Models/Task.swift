@@ -8,10 +8,7 @@ final class Task: Identifiable {
     var startTime: Date
     var endTime: Date?
     var isActive: Bool
-    
-    // Optional color for visual distinction
-    var hexColor: String?
-    
+
     var duration: TimeInterval {
         if isActive {
             return Date().timeIntervalSince(startTime)
@@ -38,13 +35,12 @@ final class Task: Identifiable {
         Self.formatDuration(duration)
     }
     
-    init(taskDescription: String, startTime: Date = Date(), hexColor: String? = nil, isActive: Bool = true) {
+    init(taskDescription: String, startTime: Date = Date(), isActive: Bool = true) {
         self.id = UUID()
         self.taskDescription = taskDescription
         self.startTime = startTime
         self.endTime = nil
         self.isActive = isActive
-        self.hexColor = hexColor
     }
     
     func stop() {

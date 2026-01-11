@@ -35,15 +35,13 @@ class AppManager {
         let startTime: Date
         let endTime: Date?
         let isActive: Bool
-        let hexColor: String?
 
-        init(id: UUID, taskDescription: String, startTime: Date, endTime: Date?, isActive: Bool, hexColor: String?) {
+        init(id: UUID, taskDescription: String, startTime: Date, endTime: Date?, isActive: Bool) {
             self.id = id
             self.taskDescription = taskDescription
             self.startTime = startTime
             self.endTime = endTime
             self.isActive = isActive
-            self.hexColor = hexColor
         }
 
         init(_ task: Task) {
@@ -52,7 +50,6 @@ class AppManager {
             self.startTime = task.startTime
             self.endTime = task.endTime
             self.isActive = task.isActive
-            self.hexColor = task.hexColor
         }
 
         func apply(to task: Task) {
@@ -61,7 +58,6 @@ class AppManager {
             task.startTime = startTime
             task.endTime = endTime
             task.isActive = isActive
-            task.hexColor = hexColor
         }
     }
 
@@ -200,7 +196,6 @@ class AppManager {
         let newTask = Task(
             taskDescription: task.taskDescription,
             startTime: task.startTime,
-            hexColor: task.hexColor,
             isActive: false
         )
         newTask.endTime = task.endTime
@@ -241,7 +236,7 @@ class AppManager {
             return
         }
 
-        let restored = Task(taskDescription: snapshot.taskDescription, startTime: snapshot.startTime, hexColor: snapshot.hexColor, isActive: snapshot.isActive)
+        let restored = Task(taskDescription: snapshot.taskDescription, startTime: snapshot.startTime, isActive: snapshot.isActive)
         restored.id = snapshot.id
         restored.endTime = snapshot.endTime
         modelContext.insert(restored)

@@ -9,13 +9,13 @@ struct TimelineGrid: View {
                 HStack(alignment: .top, spacing: 0) {
                     Text(String(format: "%02d:00", hour))
                         .font(.system(size: 10, weight: .semibold, design: .monospaced))
-                            .foregroundColor(AppTheme.Colors.textSecondary.opacity(AppTheme.Opacity.secondaryTextMedium))
+                        .foregroundStyle(.secondary)
                         .frame(width: AppTheme.Timeline.hourLabelWidth, alignment: .trailing)
                         .offset(x: AppTheme.Timeline.hourLabelOffsetX, y: AppTheme.Timeline.hourLabelOffsetY)
 
                     VStack(spacing: 0) {
                         Rectangle()
-                                .fill(AppTheme.Colors.gridLine)
+                            .fill(AppTheme.Colors.gridLine)
                             .frame(height: 1)
                             .offset(x: AppTheme.Timeline.hourLineOffsetX)
                         Spacer()
@@ -25,10 +25,5 @@ struct TimelineGrid: View {
                 .id(hour)
             }
         }
-        .overlay(
-            Rectangle()
-                .fill(Color.clear)
-                .contentShape(Rectangle())
-        )
     }
 }

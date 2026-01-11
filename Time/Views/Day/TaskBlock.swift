@@ -21,42 +21,63 @@ struct TaskBlock: View {
 
     var body: some View {
         let _ = task.isActive ? manager.lastTick : .distantPast
-        let baseColor = task.isActive ? AppTheme.Colors.activeTimer : AppTheme.Colors.completedTimer
+        let tintColor = task.isActive ? AppTheme.Colors.activeTimer : AppTheme.Colors.taskBaseColor(task: task)
+        let isSelected = task.id == selectedTask?.id
+        let isInteracting = isDragging || isResizing
 
         VStack(alignment: .leading, spacing: 2) {
             TaskContent(task: task)
         }
-        .padding(8)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 8)
+        .frame(minWidth: 0, maxWidth: .infinity, minHeight: 0, maxHeight: .infinity, alignment: .topLeading)
+        .clipped()
         .contentShape(Rectangle())
         .simultaneousGesture(
             TapGesture()
                 .onEnded {
-                    selectedTask = task
+                    withAnimation(.snappy(duration: 0.18)) {
+                        selectedTask = task
+                    }
                 }
         )
-        .background(
-            RoundedRectangle(cornerRadius: AppTheme.cardCornerRadius)
-                .fill(AppTheme.Gradients.activeGradient(for: baseColor))
+        .background {
+            RoundedRectangle(cornerRadius: AppTheme.cardCornerRadius, style: .continuous)
+                .fill(AppTheme.Colors.background)
+                .overlay {
+                    RoundedRectangle(cornerRadius: AppTheme.cardCornerRadius, style: .continuous)
+                        .fill(
+                            LinearGradient(
+                                colors: [tintColor.opacity(task.isActive ? 0.5 : 0.5), tintColor.opacity(0.1)],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                }
+                .overlay {
+                    RoundedRectangle(cornerRadius: AppTheme.cardCornerRadius, style: .continuous)
+                        .stroke(
+                            isSelected ? AppTheme.Colors.accent.opacity(0.95) : AppTheme.Colors.separator.opacity(isHovering ? 0.55 : 0.35),
+                            lineWidth: isSelected ? 2 : 1
+                        )
+                }
                 .shadow(
-                    color: Color.black.opacity(isDragging || isResizing ? AppTheme.Opacity.shadowActive : AppTheme.Opacity.shadowResting),
-                    radius: isDragging || isResizing ? 8 : 2,
-                    y: isDragging || isResizing ? 4 : 1
+                    color: Color.black.opacity(isInteracting ? 0.14 : (isHovering ? 0.10 : 0.06)),
+                    radius: isInteracting ? 12 : (isHovering ? 8 : 4),
+                    x: 0,
+                    y: isInteracting ? 7 : (isHovering ? 5 : 2)
                 )
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: AppTheme.cardCornerRadius)
-                .stroke(
-                    task.id == selectedTask?.id ? AppTheme.Colors.accent : baseColor.opacity(0.3),
-                    lineWidth: task.id == selectedTask?.id ? 2 : 1
-                )
-        )
-        .shadow(color: task.id == selectedTask?.id ? AppTheme.Colors.accent.opacity(0.3) : .clear, radius: 4)
+        }
+        .scaleEffect(isInteracting ? 1.02 : (isHovering ? 1.01 : 1))
+        .animation(.snappy(duration: 0.18), value: isHovering)
+        .animation(.snappy(duration: 0.18), value: isSelected)
+        .animation(.snappy(duration: 0.18), value: isInteracting)
         .popover(item: Binding(
             get: { selectedTask?.id == task.id ? selectedTask : nil },
             set: { if $0 == nil { selectedTask = nil } }
         )) { task in
             EditTaskView(task: task, hasUnsavedChanges: $hasUnsavedChanges)
+                .presentationCompactAdaptation(.none)
         }
         .overlay(alignment: .top) {
             if isDragging || isResizing { TimeLabel(date: task.startTime, isTop: true) }
@@ -70,7 +91,7 @@ struct TaskBlock: View {
             Button("Delete", role: .destructive) { manager.deleteTask(task, undoManager: undoManager) }
         }
         .onHover { hovering in isHovering = hovering }
-        .cursor(isHovering ? .pointingHand : .arrow)
+        .cursor((isHovering && !isInteracting) ? .pointingHand : .arrow)
         .simultaneousGesture(
             DragGesture(minimumDistance: 4, coordinateSpace: .named("timeline"))
                 .onChanged { value in
@@ -205,12 +226,14 @@ struct TaskContent: View {
         HStack(alignment: .top) {
             VStack(alignment: .leading, spacing: 2) {
                 Text(task.taskDescription)
-                    .font(.system(size: 11, weight: .bold))
-                    .foregroundStyle(AppTheme.Colors.textPrimary)
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(.primary)
                     .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
 
                 Text(task.formattedDuration)
-                    .font(.system(size: 10, weight: .medium, design: .monospaced))
+                    .font(.system(size: 10, weight: .medium))
+                    .monospacedDigit()
                     .foregroundStyle(task.isActive ? AppTheme.Colors.activeTimer : .secondary)
             }
 
@@ -218,7 +241,7 @@ struct TaskContent: View {
 
             if task.isActive {
                 Image(systemName: "timer")
-                    .font(.system(size: 10))
+                    .font(.system(size: 11, weight: .semibold))
                     .foregroundColor(AppTheme.Colors.activeTimer)
                     .symbolEffect(.pulse)
             }

@@ -62,24 +62,27 @@ struct AppTheme {
     }
     
     struct Colors {
-        static let accent = Color.blue
-        static let activeTimer = Color.blue
-        static let completedTimer = Color(nsColor: .secondaryLabelColor).opacity(0.8)
+        static let accent = Color.accentColor
+        static let activeTimer = Color.accentColor
+        static let completedTimer = Color(nsColor: .secondaryLabelColor).opacity(0.9)
 
-        static let destructive = Color.red
-        static let nowIndicator = Color.red
+        static let destructive = Color(nsColor: .systemRed)
+        static let nowIndicator = Color(nsColor: .systemRed)
 
-        static let fieldBackground = Color.secondary.opacity(AppTheme.Opacity.subtleBackground)
-        static let fieldDisabledBackground = Color.secondary.opacity(AppTheme.Opacity.subtleBackground)
-        static let fieldBorder = Color.secondary.opacity(AppTheme.Opacity.border)
-        static let footerBackground = Color.secondary.opacity(AppTheme.Opacity.verySubtleBackground)
+        static var separator: Color { Color(nsColor: .separatorColor) }
+        static var tertiaryFill: Color { Color(nsColor: .tertiaryLabelColor).opacity(0.18) }
+
+        static var fieldBackground: Color { Color(nsColor: .textBackgroundColor) }
+        static var fieldDisabledBackground: Color { Color(nsColor: .controlBackgroundColor).opacity(0.6) }
+        static var fieldBorder: Color { Color(nsColor: .separatorColor) }
+        static var footerBackground: Color { Color(nsColor: .windowBackgroundColor).opacity(0.001) }
 
         static let timeLabelBackground = Color.black.opacity(AppTheme.Opacity.timeLabelBackground)
-        static let resizeHandle = Color.secondary.opacity(AppTheme.Opacity.resizeHandle)
-        static let gridLine = Color.secondary.opacity(AppTheme.Opacity.border)
+        static let resizeHandle = Color(nsColor: .tertiaryLabelColor).opacity(0.35)
+        static let gridLine = Color(nsColor: .separatorColor).opacity(0.55)
         
         static var background: Color {
-            Color(NSColor.windowBackgroundColor)
+            Color(NSColor.white)
         }
         
         static var sidebarBackground: Color {
@@ -99,6 +102,32 @@ struct AppTheme {
         }
         
         static let timerPulse = Color.blue.opacity(0.5)
+
+        static let pastelPalette: [NSColor] = [
+            NSColor(red: 0.92, green: 0.75, blue: 0.75, alpha: 1.0), // Muted Rose
+            NSColor(red: 0.75, green: 0.85, blue: 0.92, alpha: 1.0), // Muted Sky
+            NSColor(red: 0.75, green: 0.92, blue: 0.85, alpha: 1.0), // Muted Mint
+            NSColor(red: 0.92, green: 0.85, blue: 0.75, alpha: 1.0), // Muted Apricot
+            NSColor(red: 0.85, green: 0.75, blue: 0.92, alpha: 1.0), // Muted Lavender
+            NSColor(red: 0.75, green: 0.92, blue: 0.92, alpha: 1.0), // Muted Teal
+            NSColor(red: 0.92, green: 0.92, blue: 0.75, alpha: 1.0), // Muted Lemon
+            NSColor(red: 0.92, green: 0.75, blue: 0.85, alpha: 1.0), // Muted Pink
+            NSColor(red: 0.82, green: 0.88, blue: 0.82, alpha: 1.0), // Muted Sage
+            NSColor(red: 0.85, green: 0.85, blue: 0.92, alpha: 1.0)  // Muted Periwinkle
+        ]
+
+        static func taskBaseColor(task: Task) -> Color {
+            // Stable-ish palette derived from UUID so tasks don't all look gray.
+            let idx = abs(task.id.uuidString.hashValue) % pastelPalette.count
+            return Color(nsColor: pastelPalette[idx])
+        }
+    }
+
+    struct Surfaces {
+        static let sidebar: Material = .thick
+        static let panel: Material = .regular
+        static let card: Material = .thin
+        static let popover: Material = .regular
     }
     
     struct Gradients {

@@ -23,6 +23,7 @@ struct TaskLayoutView: View {
                     )
                     .frame(width: geo.size.width * layout.widthPercent, height: calculateHeight(for: layout.task))
                     .offset(x: geo.size.width * layout.offsetXPercent, y: calculateY(for: layout.task))
+                    .animation(.snappy(duration: 0.22), value: selectedTask?.id)
                 }
             }
         }

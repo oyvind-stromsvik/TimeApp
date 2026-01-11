@@ -11,42 +11,17 @@ struct ContentView: View {
             TimerControlsView()
                 .navigationSplitViewColumnWidth(min: 100, ideal: AppTheme.sidebarWidth, max: 400)
         } detail: {
-            DayView(date: selectedDate)
+            DayView(date: selectedDate, onDateChange: { selectedDate = $0 })
                 .frame(minWidth: 100, idealWidth: AppTheme.mainWidth, maxWidth: .infinity)
                 .toolbar {
-                    if columnVisibility == .detailOnly {
-                        ToolbarItem(placement: .navigation) {
-                            Button {
-                                withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
-                                    columnVisibility = columnVisibility == .detailOnly ? .all : .detailOnly
-                                }
-                            } label: {
-                                Label("Toggle Sidebar", systemImage: "sidebar.left")
-                            }
-                        }
-                    }
-                    
-                    ToolbarItem(placement: .principal) {
-                        DatePicker("", selection: $selectedDate, displayedComponents: [.date])
-                            .datePickerStyle(.stepperField)
-                            .labelsHidden()
-                            .frame(width: 140)
-                            .padding(.horizontal, 8)
-                            .background(AppTheme.Colors.fieldBackground)
-                            .cornerRadius(6)
-                    }
-                    
-                    ToolbarItem(placement: .primaryAction) {
+                    ToolbarItem(placement: .navigation) {
                         Button {
                             withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
-                                selectedDate = Date()
+                                columnVisibility = columnVisibility == .detailOnly ? .all : .detailOnly
                             }
                         } label: {
-                            Label("Today", systemImage: "calendar")
-                                .font(.system(size: 12, weight: .medium))
+                            Label("Toggle Sidebar", systemImage: "sidebar.left")
                         }
-                        .buttonStyle(.bordered)
-                        .controlSize(.small)
                     }
                 }
         }
