@@ -3,10 +3,13 @@ import SwiftData
 
 struct ContentView: View {
     @Environment(\.modelContext) private var modelContext
+    @Environment(AppManager.self) private var manager
     @State private var selectedDate = Date()
     @State private var columnVisibility = NavigationSplitViewVisibility.all
     
     var body: some View {
+        @Bindable var bindableManager = manager
+        
         NavigationSplitView(columnVisibility: $columnVisibility) {
             TimerControlsView()
                 .navigationSplitViewColumnWidth(min: 100, ideal: AppTheme.sidebarWidth, max: 400)
@@ -24,6 +27,11 @@ struct ContentView: View {
                         }
                     }
                 }
+        }
+        .alert("Time to Track!", isPresented: $bindableManager.showAggressiveAlert) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text("You have no active timers running.")
         }
     }
 }

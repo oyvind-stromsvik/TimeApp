@@ -45,5 +45,24 @@ struct TimeApp: App {
                 .keyboardShortcut("Z", modifiers: [.command, .shift])
             }
         }
+        
+        MenuBarExtra {
+            Button("Open Time") {
+                NSApp.activate(ignoringOtherApps: true)
+                // If the main window is closed, this might not reopen it automatically in standard SwiftUI without openWindow env, 
+                // but usually works for bringing to front.
+            }
+            
+            Divider()
+            
+            Button("Quit") {
+                NSApplication.shared.terminate(nil)
+            }
+        } label: {
+            MenuBarLabel(manager: manager)
+        }
+        .modelContainer(sharedModelContainer)
+        // Environment injection for content is still fine, though we don't strictly use it in the menu content yet.
+        .environment(manager)
     }
 }

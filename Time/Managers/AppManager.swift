@@ -1,18 +1,46 @@
 import Foundation
 import SwiftUI
 import SwiftData
+import UserNotifications
+import CoreGraphics
 
 @Observable
-class AppManager {
+class AppManager: NSObject, UNUserNotificationCenterDelegate {
     private var timer: Timer?
     private var modelContext: ModelContext
     
     // This property is just to trigger UI updates for active timers
     var lastTick: Date = Date()
     
+    // UI binding for aggressive alert
+    var showAggressiveAlert: Bool = false
+    
     init(modelContext: ModelContext) {
         self.modelContext = modelContext
+        super.init()
+        requestNotificationPermission()
+        UNUserNotificationCenter.current().delegate = self
         startTimer()
+    }
+
+    private func requestNotificationPermission() {
+        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { granted, error in
+            if let error = error {
+                print("Error requesting notification permissions: \(error.localizedDescription)")
+            }
+        }
+    }
+    
+    // Delegate method to allow notifications while app is in foreground
+    func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification, withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
+        completionHandler([.banner, .sound])
+    }
+
+    // Handle user clicking on the notification
+    func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: @escaping () -> Void) {
+        // Bring app to front
+        NSApp.activate(ignoringOtherApps: true)
+        completionHandler()
     }
     
     deinit {
@@ -21,8 +49,77 @@ class AppManager {
     
     private func startTimer() {
         timer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
-            self?.lastTick = Date()
+            guard let self else { return }
+            self.lastTick = Date()
+            self.checkIdleStatus()
         }
+    }
+    
+    // Track when we last notified the user about being idle
+    private var lastIdleAlert: Date?
+    private var lastAggressiveAlert: Date?
+    
+    // How long (in seconds) the user must be idle before we show an alert
+    private let idleThreshold: TimeInterval = 300
+    
+    // How long (in seconds) the user must be idle before we show an alert
+    private let aggressiveThreshold: TimeInterval = 60
+    
+    private func checkIdleStatus() {
+        if activeTasks.isEmpty {
+            // Case 1: No active timer -> Aggressively alert every minute (regardless of idle state, or maybe we want this always?)
+            // Requirement: "If I have NO active timers then the app should notify me every minute no matter if I'm idle or not."
+            
+            // Check if we alerted recently (within 60s)
+            if let lastAggressive = lastAggressiveAlert, Date().timeIntervalSince(lastAggressive) < aggressiveThreshold {
+                return
+            }
+            
+            // Trigger aggressive alert
+            NSApp.activate(ignoringOtherApps: true)
+            showAggressiveAlert = true
+            lastAggressiveAlert = Date()
+            
+        } else {
+            // Case 2: Active timer -> Check for idle
+            
+            // Calculate idle time
+            guard let idleTime = getSystemIdleTime() else { return }
+            
+            if idleTime >= idleThreshold {
+                // Ensure we haven't alerted too recently (e.g. within the last 60 seconds)
+                if let lastAlert = lastIdleAlert, Date().timeIntervalSince(lastAlert) < idleThreshold {
+                    return
+                }
+                
+                sendIdleNotification()
+                lastIdleAlert = Date()
+            } else {
+                // Reset alert state if user becomes active
+                lastIdleAlert = nil
+            }
+            
+            // Reset aggressive alert timer so it starts fresh if they stop the timer
+            lastAggressiveAlert = nil
+        }
+    }
+    
+    private func getSystemIdleTime() -> TimeInterval? {
+        // kCGAnyInputEventType is ~0 (UInt32.max)
+        if let eventType = CGEventType(rawValue: UInt32.max) {
+             return CGEventSource.secondsSinceLastEventType(.hidSystemState, eventType: eventType)
+        }
+        return nil
+    }
+
+    private func sendIdleNotification() {
+        let content = UNMutableNotificationContent()
+        content.title = "Are you working?"
+        content.body = "You've been idle for a while with no active timer. Click here to start tracking."
+        content.sound = .default
+        
+        let request = UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: nil)
+        UNUserNotificationCenter.current().add(request)
     }
     
     func startNewTimer(description: String, startTime: Date = Date()) {
@@ -67,6 +164,11 @@ class AppManager {
         }
         let descriptor = FetchDescriptor<Task>(predicate: predicate)
         return (try? modelContext.fetch(descriptor))?.first
+    }
+    
+    var activeTasks: [Task] {
+        let descriptor = FetchDescriptor<Task>(predicate: #Predicate { $0.isActive })
+        return (try? modelContext.fetch(descriptor)) ?? []
     }
 
     private func apply(snapshot: TaskSnapshot, undoManager: UndoManager?, actionName: String) {
