@@ -47,6 +47,8 @@ struct TimeApp: App {
         }
         
         MenuBarExtra {
+            MenuBarTaskList(manager: manager)
+            
             Button("Open Time") {
                 NSApp.activate(ignoringOtherApps: true)
                 // If the main window is closed, this might not reopen it automatically in standard SwiftUI without openWindow env, 

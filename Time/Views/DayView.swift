@@ -64,6 +64,7 @@ struct DayView: View {
                     ZStack(alignment: .topLeading) {
                         // Background Grid
                         TimelineGrid(hourHeight: hourHeight)
+                            .contentShape(Rectangle())
                             .onTapGesture { location in
                                 if selectedTask != nil {
                                     if hasUnsavedChanges {

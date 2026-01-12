@@ -16,7 +16,7 @@ struct MenuBarLabel: View {
             if activeTasks.isEmpty {
                 Text("NO ACTIVE TASKS")
             } else if activeTasks.count == 1, let task = activeTasks.first {
-                Text(task.taskDescription)
+                Text("\(task.taskDescription) \(task.formattedDuration)")
             } else {
                 Text("\(activeTasks.count) Active")
             }
