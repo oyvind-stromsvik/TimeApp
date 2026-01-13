@@ -29,6 +29,63 @@ A beautiful, native macOS time tracking application built with Swift and SwiftUI
 - **SwiftUI**: A declarative framework for building beautiful, responsive user interfaces.
 - **Native macOS Implementation**: Leverages native components for performance and the standard macOS "look and feel."
 
----
+## Build Commands
 
-*Note: This project is currently in active development.*
+This is an Xcode project (no Package.swift). Build and run with:
+
+```bash
+# Open in Xcode
+open Time.xcodeproj
+
+# Build from command line
+xcodebuild build -scheme Time -destination 'platform=macOS'
+
+# Run tests
+xcodebuild test -scheme Time -destination 'platform=macOS'
+```
+
+Requires Xcode 16+ and macOS 14.0+.
+
+## Architecture
+
+**Time** is a native macOS time tracking app built with Swift/SwiftUI and SwiftData for persistence.
+
+### Core Components
+
+- **TimeApp.swift** - App entry point. Initializes SwiftData ModelContainer and AppManager, provides both a main window and MenuBarExtra scene.
+
+- **AppManager.swift** - Central state manager using `@Observable`. Handles:
+  - Task CRUD operations via SwiftData
+  - Timer lifecycle (1-second tick updates)
+  - Undo/redo with NSUndoManager and TaskSnapshot pattern
+  - System idle detection via CoreGraphics
+  - Idle notifications (5-min threshold while tracking, 60-sec if no active timer)
+
+- **Task.swift** - SwiftData model representing a time entry with title, start/end times, color, and optional notes.
+
+- **AppTheme.swift** - Centralized design constants (hour height, snap intervals, colors, materials).
+
+### View Hierarchy
+
+```
+ContentView (NavigationSplitView)
+├── TimerControlsView (sidebar - active timers list)
+└── DayView (detail - 24-hour scrollable timeline)
+    ├── TimelineGrid (background grid)
+    ├── CurrentTimeIndicator (red "now" line)
+    └── TaskLayoutView (handles overlapping task layout)
+        └── TaskBlock (individual task with drag/resize gestures)
+            └── EditTaskView (popover for editing)
+```
+
+### Key Patterns
+
+- **Centralized State**: AppManager holds `selectedTask`, `hasUnsavedChanges`, and `showingDiscardAlert` - use these instead of local @State
+- **Task Selection**: Use `manager.selectTask()` for animated selection, or set `manager.selectedTask` directly when opening popovers
+- **Task Creation**: Use `manager.createTask()` with `selectAfterCreation: true` to create and select in one call
+- **Drag State**: TaskBlock uses a `DragState` struct to consolidate drag/resize state initialization
+- **Popovers**: Single source of truth via `manager.popoverLocation` enum (`.none`, `.dayView(taskID:)`, `.sidebar(taskID:)`). Use `manager.openPopover(for:from:)` to open (handles unsaved changes check) and `manager.closePopover()` to close
+- **View Modifiers**: Use `.unsavedChangesAlert(manager:)` for consistent discard alert handling
+- **Animations**: Use `AppTheme.Animation.standard` instead of hardcoded `.snappy(duration: 0.18)`
+- **5-Minute Snapping**: All timeline operations snap to 5-minute intervals
+- **Menu Bar Integration**: Uses SwiftUI `MenuBarExtra` for always-visible timer status
