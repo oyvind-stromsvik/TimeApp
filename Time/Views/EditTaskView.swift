@@ -38,10 +38,13 @@ struct EditTaskView: View {
     }
 
     private var hasUnsavedChanges: Bool {
-        taskDescription != originalDescription ||
-        abs(startTime.timeIntervalSince(originalStartTime)) > 1 ||
-        abs(endTime.timeIntervalSince(originalEndTime)) > 1 ||
-        isActive != originalIsActive
+        // For active tasks, ignore endTime since it's managed by the system (current time)
+        let endTimeChanged = !isActive && !originalIsActive && abs(endTime.timeIntervalSince(originalEndTime)) > 1
+        
+        return taskDescription != originalDescription ||
+               abs(startTime.timeIntervalSince(originalStartTime)) > 1 ||
+               endTimeChanged ||
+               isActive != originalIsActive
     }
 
     var body: some View {
@@ -85,7 +88,8 @@ struct EditTaskView: View {
                         TextField("0:00:00", text: $durationString)
                             .textFieldStyle(.plain)
                             .font(.system(size: 20, weight: .medium, design: .monospaced))
-                            .appCardField(padding: 10, cornerRadius: 5)
+                            .disabled(isActive)
+                            .appCardField(padding: 10, cornerRadius: 5, disabledStyle: isActive)
                             .onChange(of: durationString) { _, newValue in
                                 updateTimesFromDuration()
                             }
@@ -95,7 +99,7 @@ struct EditTaskView: View {
                                 .datePickerStyle(.stepperField)
                                 .frame(maxWidth: .infinity)
                                 .onChange(of: startTime) { _, _ in updateDurationFromTimes() }
-                                .appCardField(padding: 5, cornerRadius: 5)
+                                .appCardField(padding: 5, cornerRadius: 5, disabledStyle: isActive)
                             
                             Image(systemName: "arrow.right")
                                 .font(.system(size: 13, weight: .bold))
