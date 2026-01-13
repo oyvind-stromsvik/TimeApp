@@ -1,8 +1,7 @@
 import SwiftUI
 
 struct AppTheme {
-    static let cornerRadius: CGFloat = 12
-    static let cardCornerRadius: CGFloat = 10
+    static let cardCornerRadius: CGFloat = 5
     static let sidebarWidth: CGFloat = 280
     static let mainWidth: CGFloat = 280
 
@@ -83,7 +82,7 @@ struct AppTheme {
         static var footerBackground: Color { Color(nsColor: .windowBackgroundColor).opacity(0.001) }
 
         static let timeLabelBackground = Color.black.opacity(AppTheme.Opacity.timeLabelBackground)
-        static let resizeHandle = Color(nsColor: .tertiaryLabelColor).opacity(0.35)
+        static let resizeHandle = Color(nsColor: .tertiaryLabelColor)
         static let gridLine = Color(nsColor: .separatorColor).opacity(0.55)
         
         static var background: Color {

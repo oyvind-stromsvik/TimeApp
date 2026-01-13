@@ -266,19 +266,24 @@ struct ResizeHandle: View {
     @Binding var isResizing: Bool
     let onResize: (CGFloat) -> Void
     let onEnded: () -> Void
+    
+    @State private var isLocalHovering = false
 
     var body: some View {
         Rectangle()
             .fill(Color.white.opacity(0.001))
-            .frame(height: 16)
+            .frame(height: 24)
             .overlay(
                 Capsule()
                     .fill(AppTheme.Colors.resizeHandle)
-                    .frame(width: 32, height: 3)
-                    .opacity(isHovering || isResizing ? 1 : 0)
+                    .frame(width: 40, height: 3)
+                    .opacity(isLocalHovering ? (isResizing ? 1.0 : 0.5) : (isHovering ? 0.5 : 0.001))
             )
             .contentShape(Rectangle())
             .cursor(.resizeUpDown)
+            .onHover { hovering in
+                isLocalHovering = hovering
+            }
             .highPriorityGesture(
                 DragGesture(minimumDistance: 0, coordinateSpace: .named("timeline"))
                     .onChanged { value in
