@@ -7,8 +7,17 @@ struct TaskLayoutView: View {
 
     @Environment(AppManager.self) private var manager
 
+    // Compute whether we have any active tasks and a tick value to trigger redraws
+    private var hasActiveTasks: Bool {
+        tasks.contains { $0.isActive }
+    }
+
+    private var currentTick: Date {
+        hasActiveTasks ? manager.lastTick : .distantPast
+    }
+
     var body: some View {
-        let _ = tasks.map { ($0.startTime, $0.endTime) }
+        let tick = currentTick // Capture tick to create dependency
         let groupedTasks = calculateHorizontalLayout()
 
         GeometryReader { geo in
@@ -19,7 +28,7 @@ struct TaskLayoutView: View {
                         hourHeight: hourHeight,
                         date: date
                     )
-                    .frame(width: geo.size.width * layout.widthPercent, height: calculateHeight(for: layout.task))
+                    .frame(width: geo.size.width * layout.widthPercent, height: calculateHeight(for: layout.task, at: tick))
                     .offset(x: geo.size.width * layout.offsetXPercent, y: calculateY(for: layout.task))
                     .animation(AppTheme.Animation.standard, value: manager.selectedTask?.id)
                 }
@@ -34,8 +43,14 @@ struct TaskLayoutView: View {
         return CGFloat(diff / 3600.0) * hourHeight
     }
 
-    private func calculateHeight(for task: Task) -> CGFloat {
-        let duration = task.duration
+    private func calculateHeight(for task: Task, at tick: Date) -> CGFloat {
+        // For active tasks, compute duration from tick to ensure SwiftUI detects the change
+        let duration: TimeInterval
+        if task.isActive {
+            duration = tick.timeIntervalSince(task.startTime)
+        } else {
+            duration = task.duration
+        }
         return max(AppTheme.Timeline.minTaskHeight, CGFloat(duration / 3600.0) * hourHeight)
     }
 

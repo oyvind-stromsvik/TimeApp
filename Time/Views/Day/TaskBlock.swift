@@ -20,13 +20,13 @@ struct TaskBlock: View {
     }
 
     var body: some View {
-        let _ = task.isActive ? manager.lastTick : .distantPast
+        let tick = task.isActive ? manager.lastTick : .distantPast
         let tintColor = task.isActive ? AppTheme.Colors.activeTimer : AppTheme.Colors.taskBaseColor(task: task)
         let isSelected = task.id == manager.selectedTask?.id
         let isInteracting = isDragging || isResizing
 
         VStack(alignment: .leading, spacing: 2) {
-            TaskContent(task: task)
+            TaskContent(task: task, tick: tick)
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 8)
@@ -204,6 +204,17 @@ struct TaskBlock: View {
 
 struct TaskContent: View {
     let task: Task
+    let tick: Date
+
+    private var formattedDuration: String {
+        let duration: TimeInterval
+        if task.isActive {
+            duration = tick.timeIntervalSince(task.startTime)
+        } else {
+            duration = task.duration
+        }
+        return Task.formatDuration(duration)
+    }
 
     var body: some View {
         HStack(alignment: .top) {
@@ -214,7 +225,7 @@ struct TaskContent: View {
                     .lineLimit(2)
                     .fixedSize(horizontal: false, vertical: true)
 
-                Text(task.formattedDuration)
+                Text(formattedDuration)
                     .font(.system(size: 10, weight: .medium))
                     .monospacedDigit()
                     .foregroundStyle(task.isActive ? AppTheme.Colors.activeTimer : .secondary)
