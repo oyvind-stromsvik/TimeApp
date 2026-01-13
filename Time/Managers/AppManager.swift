@@ -9,12 +9,50 @@ class AppManager: NSObject, UNUserNotificationCenterDelegate {
     private var timer: Timer?
     private var modelContext: ModelContext
     
+    // Track when we last notified the user about being idle
+    private var lastIdleAlert: Date = Date()
+    private var lastAggressiveAlert: Date = Date()
+    
+    // How long (in seconds) the user must be idle before we show an alert
+    private let idleThreshold: TimeInterval = 300
+    
+    // How long (in seconds) the user must be idle before we show an alert
+    private let aggressiveThreshold: TimeInterval = 60
+    
     // This property is just to trigger UI updates for active timers
     var lastTick: Date = Date()
-    
+
     // UI binding for aggressive alert
     var showAggressiveAlert: Bool = false
-    
+
+    // MARK: - Centralized Selection State
+    var selectedTask: Task?
+    var hasUnsavedChanges: Bool = false
+    var showingDiscardAlert: Bool = false
+
+    // MARK: - Popover State
+    enum PopoverLocation: Equatable {
+        case none
+        case dayView(taskID: UUID)
+        case sidebar(taskID: UUID)
+    }
+    var popoverLocation: PopoverLocation = .none
+
+    func openPopover(for task: Task, from location: PopoverLocation) {
+        if hasUnsavedChanges {
+            showingDiscardAlert = true
+        }
+        else {
+            popoverLocation = location
+        }
+    }
+
+    func closePopover() {
+        print("Close popover")
+        popoverLocation = .none
+        hasUnsavedChanges = false
+    }
+
     init(modelContext: ModelContext) {
         self.modelContext = modelContext
         super.init()
@@ -54,53 +92,34 @@ class AppManager: NSObject, UNUserNotificationCenterDelegate {
             self.checkIdleStatus()
         }
     }
-    
-    // Track when we last notified the user about being idle
-    private var lastIdleAlert: Date?
-    private var lastAggressiveAlert: Date?
-    
-    // How long (in seconds) the user must be idle before we show an alert
-    private let idleThreshold: TimeInterval = 300
-    
-    // How long (in seconds) the user must be idle before we show an alert
-    private let aggressiveThreshold: TimeInterval = 60
-    
+
+    /**
+     Intended to annoy the user until they are actively tracking time on a task.
+     They express purpose of this app is to always track time on at least one
+     task at all points throughout the workday, ie. as long as the app is open,
+     so we want to be as annoying as possible in that regard.
+     */
     private func checkIdleStatus() {
+        // Case 1: No active timer -> Aggressively alert
         if activeTasks.isEmpty {
-            // Case 1: No active timer -> Aggressively alert every minute (regardless of idle state, or maybe we want this always?)
-            // Requirement: "If I have NO active timers then the app should notify me every minute no matter if I'm idle or not."
-            
-            // Check if we alerted recently (within 60s)
-            if let lastAggressive = lastAggressiveAlert, Date().timeIntervalSince(lastAggressive) < aggressiveThreshold {
+            if Date().timeIntervalSince(lastAggressiveAlert) < aggressiveThreshold {
                 return
             }
             
-            // Trigger aggressive alert
             NSApp.activate(ignoringOtherApps: true)
             showAggressiveAlert = true
             lastAggressiveAlert = Date()
-            
-        } else {
-            // Case 2: Active timer -> Check for idle
-            
-            // Calculate idle time
+        }
+        // Case 2: Active timer -> Check for idle
+        else {
             guard let idleTime = getSystemIdleTime() else { return }
-            
-            if idleTime >= idleThreshold {
-                // Ensure we haven't alerted too recently (e.g. within the last 60 seconds)
-                if let lastAlert = lastIdleAlert, Date().timeIntervalSince(lastAlert) < idleThreshold {
-                    return
-                }
-                
-                sendIdleNotification()
-                lastIdleAlert = Date()
-            } else {
-                // Reset alert state if user becomes active
-                lastIdleAlert = nil
+            if idleTime < idleThreshold || Date().timeIntervalSince(lastIdleAlert) < idleThreshold {
+                return
             }
             
-            // Reset aggressive alert timer so it starts fresh if they stop the timer
-            lastAggressiveAlert = nil
+            sendIdleNotification()
+            lastIdleAlert = Date()
+            lastAggressiveAlert = Date()
         }
     }
     
@@ -122,10 +141,6 @@ class AppManager: NSObject, UNUserNotificationCenterDelegate {
         UNUserNotificationCenter.current().add(request)
     }
     
-    func startNewTimer(description: String, startTime: Date = Date()) {
-        addNewTask(description: description, startTime: startTime, isActive: true)
-    }
-
     fileprivate struct TaskSnapshot: Equatable {
         let id: UUID
         let taskDescription: String
@@ -169,6 +184,36 @@ class AppManager: NSObject, UNUserNotificationCenterDelegate {
     var activeTasks: [Task] {
         let descriptor = FetchDescriptor<Task>(predicate: #Predicate { $0.isActive })
         return (try? modelContext.fetch(descriptor)) ?? []
+    }
+
+    // MARK: - Selection Management
+
+    func selectTask(_ task: Task?, animated: Bool = true) {
+        print("Select task: \(String(describing: task?.taskDescription ?? "nil"))")
+        if animated {
+            withAnimation(AppTheme.Animation.standard) {
+                selectedTask = task
+            }
+        }
+        else {
+            selectedTask = task
+        }
+    }
+
+    func tryDeselectTask() {
+        print("Try to deselect task")
+        if hasUnsavedChanges {
+            showingDiscardAlert = true
+        }
+        else {
+            selectTask(nil);
+        }
+    }
+
+    func discardChangesAndDeselect() {
+        print("Discard changes and deselect task")
+        hasUnsavedChanges = false
+        selectTask(nil);
     }
 
     private func apply(snapshot: TaskSnapshot, undoManager: UndoManager?, actionName: String) {
@@ -279,6 +324,25 @@ class AppManager: NSObject, UNUserNotificationCenterDelegate {
         }
 
         return newTask
+    }
+
+    /// Creates a new task and optionally selects it. This is the unified entry point for task creation.
+    @discardableResult
+    func createTask(description: String, startTime: Date, endTime: Date? = nil, isActive: Bool = false, selectAfterCreation: Bool = false,  undoManager: UndoManager? = nil) -> Task {
+        let task = addNewTask(
+            description: description,
+            startTime: startTime,
+            endTime: endTime,
+            isActive: isActive,
+            undoManager: undoManager
+        )
+
+        if selectAfterCreation {
+            openPopover(for: task, from: .dayView(taskID: task.id))
+            selectTask(task);
+        }
+
+        return task
     }
 
     func updateTask(_ task: Task, startTime: Date, endTime: Date?, description: String, undoManager: UndoManager? = nil) {

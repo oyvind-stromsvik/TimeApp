@@ -38,6 +38,11 @@ struct AppTheme {
         static let snapMinutes: Int = 5
     }
 
+    struct Animation {
+        /// Standard snappy animation used throughout the app.
+        static let standard = SwiftUI.Animation.snappy(duration: 0.18)
+    }
+
     struct Timeline {
         static let hoursPerDay: Int = 24
 

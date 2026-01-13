@@ -5,8 +5,6 @@ struct TaskBlock: View {
     @Bindable var task: Task
     let hourHeight: CGFloat
     let date: Date
-    @Binding var selectedTask: Task?
-    @Binding var hasUnsavedChanges: Bool
 
     @Environment(AppManager.self) private var manager
     @Environment(\.undoManager) private var undoManager
@@ -14,15 +12,17 @@ struct TaskBlock: View {
     @State private var isDragging = false
     @State private var isResizing = false
 
-    @State private var dragInitialStartTime: Date?
-    @State private var dragInitialEndTime: Date?
-    @State private var dragInitialIsActive: Bool?
-    @State private var dragInitialDuration: TimeInterval?
+    // Drag state - consolidated into a struct for cleaner management
+    @State private var dragState = DragState()
+
+    private var showingPopover: Bool {
+        manager.popoverLocation == .dayView(taskID: task.id)
+    }
 
     var body: some View {
         let _ = task.isActive ? manager.lastTick : .distantPast
         let tintColor = task.isActive ? AppTheme.Colors.activeTimer : AppTheme.Colors.taskBaseColor(task: task)
-        let isSelected = task.id == selectedTask?.id
+        let isSelected = task.id == manager.selectedTask?.id
         let isInteracting = isDragging || isResizing
 
         VStack(alignment: .leading, spacing: 2) {
@@ -36,9 +36,8 @@ struct TaskBlock: View {
         .simultaneousGesture(
             TapGesture()
                 .onEnded {
-                    withAnimation(.snappy(duration: 0.18)) {
-                        selectedTask = task
-                    }
+                    manager.openPopover(for: task, from: .dayView(taskID: task.id))
+                    manager.selectTask(task)
                 }
         )
         .background {
@@ -69,14 +68,16 @@ struct TaskBlock: View {
                 )
         }
         .scaleEffect(isInteracting ? 1.02 : (isHovering ? 1.01 : 1))
-        .animation(.snappy(duration: 0.18), value: isHovering)
-        .animation(.snappy(duration: 0.18), value: isSelected)
-        .animation(.snappy(duration: 0.18), value: isInteracting)
-        .popover(item: Binding(
-            get: { selectedTask?.id == task.id ? selectedTask : nil },
-            set: { if $0 == nil { selectedTask = nil } }
-        )) { task in
-            EditTaskView(task: task, hasUnsavedChanges: $hasUnsavedChanges)
+        .animation(AppTheme.Animation.standard, value: isHovering)
+        .animation(AppTheme.Animation.standard, value: isSelected)
+        .animation(AppTheme.Animation.standard, value: isInteracting)
+        .popover(
+            isPresented: Binding(
+                get: { showingPopover },
+                set: { if !$0 { manager.closePopover() } }
+            )
+        ) {
+            EditTaskView(task: task, manager: manager)
                 .presentationCompactAdaptation(.none)
         }
         .overlay(alignment: .top) {
@@ -95,33 +96,26 @@ struct TaskBlock: View {
         .simultaneousGesture(
             DragGesture(minimumDistance: 4, coordinateSpace: .named("timeline"))
                 .onChanged { value in
-                    if dragInitialStartTime == nil {
-                        dragInitialStartTime = task.startTime
-                        dragInitialEndTime = task.endTime
-                        dragInitialIsActive = task.isActive
-                        let endForDuration = task.endTime ?? Date()
-                        dragInitialDuration = endForDuration.timeIntervalSince(task.startTime)
+                    if !dragState.isInitialized {
+                        dragState.initialize(from: task)
                     }
                     isDragging = true
                     updatePosition(offset: value.translation.height)
                 }
                 .onEnded { _ in
-                    if let oldStartTime = dragInitialStartTime,
-                       let oldIsActive = dragInitialIsActive {
+                    if let oldStartTime = dragState.startTime,
+                       let oldIsActive = dragState.isActive {
                         manager.registerUndoForTimeChange(
                             taskID: task.id,
                             oldStartTime: oldStartTime,
-                            oldEndTime: dragInitialEndTime,
+                            oldEndTime: dragState.endTime,
                             oldIsActive: oldIsActive,
                             undoManager: undoManager,
                             actionName: "Move Task"
                         )
                     }
                     isDragging = false
-                    dragInitialStartTime = nil
-                    dragInitialEndTime = nil
-                    dragInitialIsActive = nil
-                    dragInitialDuration = nil
+                    dragState.reset()
                     manager.save()
                 }
         )
@@ -148,64 +142,53 @@ struct TaskBlock: View {
     }
 
     private func handleResizeEnded() {
-        if let oldStartTime = dragInitialStartTime,
-           let oldIsActive = dragInitialIsActive {
+        if let oldStartTime = dragState.startTime,
+           let oldIsActive = dragState.isActive {
             manager.registerUndoForTimeChange(
                 taskID: task.id,
                 oldStartTime: oldStartTime,
-                oldEndTime: dragInitialEndTime,
+                oldEndTime: dragState.endTime,
                 oldIsActive: oldIsActive,
                 undoManager: undoManager,
                 actionName: "Resize Task"
             )
         }
         isResizing = false
-        dragInitialStartTime = nil
-        dragInitialEndTime = nil
-        dragInitialIsActive = nil
-        dragInitialDuration = nil
+        dragState.reset()
         manager.save()
     }
 
     private func updatePosition(offset: CGFloat) {
-        guard let baseStart = dragInitialStartTime, let duration = dragInitialDuration else { return }
+        guard let baseStart = dragState.startTime, let duration = dragState.duration else { return }
         let timeDiff = (offset / hourHeight) * 3600.0
         let newStart = snap(baseStart.addingTimeInterval(timeDiff))
         task.startTime = newStart
-        if dragInitialEndTime != nil {
+        if dragState.endTime != nil {
             task.endTime = newStart.addingTimeInterval(duration)
         } else {
             task.endTime = nil
         }
-        if let dragInitialIsActive {
-            task.isActive = dragInitialIsActive
+        if let isActive = dragState.isActive {
+            task.isActive = isActive
         }
     }
 
     private func updateStartTime(offset: CGFloat) {
-        if dragInitialStartTime == nil {
-            dragInitialStartTime = task.startTime
-            dragInitialEndTime = task.endTime
-            dragInitialIsActive = task.isActive
-            let endForDuration = task.endTime ?? Date()
-            dragInitialDuration = endForDuration.timeIntervalSince(task.startTime)
+        if !dragState.isInitialized {
+            dragState.initialize(from: task)
         }
-        guard let baseStart = dragInitialStartTime else { return }
-        let baseEnd = dragInitialEndTime ?? Date()
+        guard let baseStart = dragState.startTime else { return }
+        let baseEnd = dragState.endTime ?? Date()
         let newStart = snap(baseStart.addingTimeInterval((offset / hourHeight) * 3600.0))
         if newStart < baseEnd.addingTimeInterval(-AppTheme.Timing.minimumTaskDuration) { task.startTime = newStart }
     }
 
     private func updateEndTime(offset: CGFloat) {
-        if dragInitialEndTime == nil {
-            dragInitialEndTime = task.endTime
-            dragInitialStartTime = task.startTime
-            dragInitialIsActive = task.isActive
-            let endForDuration = task.endTime ?? Date()
-            dragInitialDuration = endForDuration.timeIntervalSince(task.startTime)
+        if !dragState.isInitialized {
+            dragState.initialize(from: task)
         }
-        guard let baseStart = dragInitialStartTime else { return }
-        let baseEnd = dragInitialEndTime ?? Date()
+        guard let baseStart = dragState.startTime else { return }
+        let baseEnd = dragState.endTime ?? Date()
         let newEnd = snap(baseEnd.addingTimeInterval((offset / hourHeight) * 3600.0))
         if newEnd > baseStart.addingTimeInterval(AppTheme.Timing.minimumTaskDuration) {
             task.endTime = newEnd
@@ -295,5 +278,34 @@ struct ResizeHandle: View {
                         onEnded()
                     }
             )
+    }
+}
+
+// MARK: - Drag State
+
+/// Consolidated state for drag/resize operations, eliminating duplicated initialization code.
+struct DragState {
+    var startTime: Date?
+    var endTime: Date?
+    var isActive: Bool?
+    var duration: TimeInterval?
+
+    var isInitialized: Bool {
+        startTime != nil
+    }
+
+    mutating func initialize(from task: Task) {
+        startTime = task.startTime
+        endTime = task.endTime
+        isActive = task.isActive
+        let endForDuration = task.endTime ?? Date()
+        duration = endForDuration.timeIntervalSince(task.startTime)
+    }
+
+    mutating func reset() {
+        startTime = nil
+        endTime = nil
+        isActive = nil
+        duration = nil
     }
 }

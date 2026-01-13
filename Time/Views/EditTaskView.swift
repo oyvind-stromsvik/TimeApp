@@ -3,14 +3,11 @@ import SwiftData
 
 struct EditTaskView: View {
     @Environment(\.modelContext) private var modelContext
-    @Environment(AppManager.self) private var manager
     @Environment(\.dismiss) private var dismiss
     @Environment(\.undoManager) private var undoManager
 
     let task: Task
-    @Binding var hasUnsavedChangesBinding: Bool
-    var onSave: (() -> Void)?
-    var onDiscard: (() -> Void)?
+    let manager: AppManager
 
     @State private var taskDescription: String
     @State private var startTime: Date
@@ -24,11 +21,9 @@ struct EditTaskView: View {
     private let originalEndTime: Date
     private let originalIsActive: Bool
 
-    init(task: Task, hasUnsavedChanges: Binding<Bool>, onSave: (() -> Void)? = nil, onDiscard: (() -> Void)? = nil) {
+    init(task: Task, manager: AppManager) {
         self.task = task
-        self._hasUnsavedChangesBinding = hasUnsavedChanges
-        self.onSave = onSave
-        self.onDiscard = onDiscard
+        self.manager = manager
         self._taskDescription = State(initialValue: task.taskDescription)
         self._startTime = State(initialValue: task.startTime)
         self._endTime = State(initialValue: task.endTime ?? Date())
@@ -61,13 +56,12 @@ struct EditTaskView: View {
                             
                             Spacer()
                             
-                            // Close button - Just snuck it in here
+                            // Close button
                             Button {
                                 if hasUnsavedChanges {
                                     showingDiscardAlert = true
                                 } else {
-                                    hasUnsavedChangesBinding = false
-                                    onDiscard?()
+                                    manager.hasUnsavedChanges = false
                                     dismiss()
                                 }
                             } label: {
@@ -159,8 +153,7 @@ struct EditTaskView: View {
         .interactiveDismissDisabled(hasUnsavedChanges)
         .alert("Unsaved Changes", isPresented: $showingDiscardAlert) {
             Button("Discard", role: .destructive) {
-                hasUnsavedChangesBinding = false
-                onDiscard?()
+                manager.hasUnsavedChanges = false
                 dismiss()
             }
             Button("Save") {
@@ -170,10 +163,10 @@ struct EditTaskView: View {
         } message: {
             Text("You have unsaved changes. Would you like to save or discard them?")
         }
-        .onChange(of: taskDescription) { hasUnsavedChangesBinding = hasUnsavedChanges }
-        .onChange(of: startTime) { hasUnsavedChangesBinding = hasUnsavedChanges }
-        .onChange(of: endTime) { hasUnsavedChangesBinding = hasUnsavedChanges }
-        .onChange(of: isActive) { hasUnsavedChangesBinding = hasUnsavedChanges }
+        .onChange(of: taskDescription) { manager.hasUnsavedChanges = hasUnsavedChanges }
+        .onChange(of: startTime) { manager.hasUnsavedChanges = hasUnsavedChanges }
+        .onChange(of: endTime) { manager.hasUnsavedChanges = hasUnsavedChanges }
+        .onChange(of: isActive) { manager.hasUnsavedChanges = hasUnsavedChanges }
     }
     
     private func updateDurationFromTimes() {
@@ -204,8 +197,7 @@ struct EditTaskView: View {
             description: taskDescription,
             undoManager: undoManager
         )
-        hasUnsavedChangesBinding = false
-        onSave?()
+        manager.hasUnsavedChanges = false
         dismiss()
     }
     
@@ -216,8 +208,6 @@ struct EditTaskView: View {
 }
 
 struct EditTaskViewPreview: View {
-    @State private var hasUnsavedChanges = false
-
     var body: some View {
         let config = ModelConfiguration(isStoredInMemoryOnly: true)
         let container = try! ModelContainer(for: Task.self, configurations: config)
@@ -227,7 +217,7 @@ struct EditTaskViewPreview: View {
 
         let manager = AppManager(modelContext: container.mainContext)
 
-        return EditTaskView(task: task, hasUnsavedChanges: $hasUnsavedChanges)
+        return EditTaskView(task: task, manager: manager)
             .modelContainer(container)
             .environment(manager)
     }

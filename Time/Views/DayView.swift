@@ -11,9 +11,6 @@ struct DayView: View {
     
     // Zoom/Scale: Height of one hour in points
     @State private var hourHeight: CGFloat = AppTheme.Timeline.defaultHourHeight
-    @State private var selectedTask: Task?
-    @State private var hasUnsavedChanges = false
-    @State private var showingDiscardAlert = false
     @State private var popoverJustClosed = false
 
     @State private var showingCalendarPopover = false
@@ -66,15 +63,12 @@ struct DayView: View {
                         TimelineGrid(hourHeight: hourHeight)
                             .contentShape(Rectangle())
                             .onTapGesture { location in
-                                if selectedTask != nil {
-                                    if hasUnsavedChanges {
-                                        showingDiscardAlert = true
-                                    } else {
-                                        withAnimation(.snappy(duration: 0.18)) {
-                                            selectedTask = nil
-                                        }
-                                    }
-                                } else if !popoverJustClosed {
+                                print("Timeline view tapped")
+                                if manager.selectedTask != nil {
+                                    print("has task, deselecting")
+                                    manager.tryDeselectTask()
+                                }
+                                else {
                                     createTaskAtPosition(location: location)
                                 }
                             }
@@ -83,9 +77,7 @@ struct DayView: View {
                         TaskLayoutView(
                             tasks: filteredTasks,
                             hourHeight: hourHeight,
-                            date: date,
-                            selectedTask: $selectedTask,
-                            hasUnsavedChanges: $hasUnsavedChanges
+                            date: date
                         )
 
                         // Current Time Indicator
@@ -193,7 +185,7 @@ struct DayView: View {
 
                     Menu {
                         Button {
-                            withAnimation(.snappy(duration: 0.18)) {
+                            withAnimation(AppTheme.Animation.standard) {
                                 hourHeight = max(AppTheme.Timeline.minHourHeight, hourHeight - AppTheme.Timeline.hourHeightStep)
                             }
                         } label: {
@@ -202,7 +194,7 @@ struct DayView: View {
                         .disabled(hourHeight <= AppTheme.Timeline.minHourHeight)
 
                         Button {
-                            withAnimation(.snappy(duration: 0.18)) {
+                            withAnimation(AppTheme.Animation.standard) {
                                 hourHeight = min(AppTheme.Timeline.maxHourHeight, hourHeight + AppTheme.Timeline.hourHeightStep)
                             }
                         } label: {
@@ -213,7 +205,7 @@ struct DayView: View {
                         Divider()
 
                         Button {
-                            withAnimation(.snappy(duration: 0.18)) {
+                            withAnimation(AppTheme.Animation.standard) {
                                 hourHeight = AppTheme.Timeline.defaultHourHeight
                             }
                         } label: {
@@ -240,7 +232,7 @@ struct DayView: View {
                 .padding(.horizontal, 6)
             }
         }
-        .onChange(of: selectedTask) { oldValue, newValue in
+        .onChange(of: manager.selectedTask) { oldValue, newValue in
             if oldValue != nil && newValue == nil {
                 popoverJustClosed = true
                 DispatchQueue.main.async {
@@ -248,15 +240,7 @@ struct DayView: View {
                 }
             }
         }
-        .alert("Unsaved Changes", isPresented: $showingDiscardAlert) {
-            Button("Discard", role: .destructive) {
-                hasUnsavedChanges = false
-                selectedTask = nil
-            }
-            Button("Keep Editing", role: .cancel) { }
-        } message: {
-            Text("You have unsaved changes. Do you want to discard them?")
-        }
+        .unsavedChangesAlert(manager: manager)
     }
     
     private var totalTimeFormatted: String {
@@ -268,6 +252,7 @@ struct DayView: View {
     }
     
     private func createTaskAtPosition(location: CGPoint) {
+        print("create task at \(location)")
         let hour = location.y / hourHeight
         let calendar = Calendar.current
         var components = calendar.dateComponents([.year, .month, .day], from: date)
@@ -277,10 +262,14 @@ struct DayView: View {
 
         if let startTime = calendar.date(from: components) {
             let endTime = startTime.addingTimeInterval(AppTheme.Timing.defaultNewTaskDuration)
-            withAnimation(.snappy(duration: 0.18)) {
-                let newTask = manager.addNewTask(description: "New Task", startTime: startTime, endTime: endTime, isActive: false, undoManager: undoManager)
-                selectedTask = newTask
-            }
+            manager.createTask(
+                description: "New Task",
+                startTime: startTime,
+                endTime: endTime,
+                isActive: false,
+                selectAfterCreation: true,
+                undoManager: undoManager
+            )
         }
     }
 
@@ -325,7 +314,7 @@ struct DayView: View {
                 Spacer()
 
                 Button {
-                    withAnimation(.snappy(duration: 0.18)) {
+                    withAnimation(AppTheme.Animation.standard) {
                         hourHeight = AppTheme.Timeline.defaultHourHeight
                     }
                 } label: {
@@ -337,7 +326,7 @@ struct DayView: View {
 
             HStack(spacing: 10) {
                 Button {
-                    withAnimation(.snappy(duration: 0.18)) {
+                    withAnimation(AppTheme.Animation.standard) {
                         hourHeight = max(AppTheme.Timeline.minHourHeight, hourHeight - AppTheme.Timeline.hourHeightStep)
                     }
                 } label: {
@@ -352,7 +341,7 @@ struct DayView: View {
                     .frame(width: 180)
 
                 Button {
-                    withAnimation(.snappy(duration: 0.18)) {
+                    withAnimation(AppTheme.Animation.standard) {
                         hourHeight = min(AppTheme.Timeline.maxHourHeight, hourHeight + AppTheme.Timeline.hourHeightStep)
                     }
                 } label: {

@@ -4,8 +4,8 @@ struct TaskLayoutView: View {
     let tasks: [Task]
     let hourHeight: CGFloat
     let date: Date
-    @Binding var selectedTask: Task?
-    @Binding var hasUnsavedChanges: Bool
+
+    @Environment(AppManager.self) private var manager
 
     var body: some View {
         let _ = tasks.map { ($0.startTime, $0.endTime) }
@@ -17,13 +17,11 @@ struct TaskLayoutView: View {
                     TaskBlock(
                         task: layout.task,
                         hourHeight: hourHeight,
-                        date: date,
-                        selectedTask: $selectedTask,
-                        hasUnsavedChanges: $hasUnsavedChanges
+                        date: date
                     )
                     .frame(width: geo.size.width * layout.widthPercent, height: calculateHeight(for: layout.task))
                     .offset(x: geo.size.width * layout.offsetXPercent, y: calculateY(for: layout.task))
-                    .animation(.snappy(duration: 0.22), value: selectedTask?.id)
+                    .animation(AppTheme.Animation.standard, value: manager.selectedTask?.id)
                 }
             }
         }

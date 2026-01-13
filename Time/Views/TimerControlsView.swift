@@ -6,10 +6,8 @@ struct TimerControlsView: View {
     @Environment(AppManager.self) private var manager
     @Environment(\.undoManager) private var undoManager
     @Query(filter: #Predicate<Task> { $0.isActive == true }, sort: \Task.startTime) private var activeTasks: [Task]
-    
+
     @State private var newTimerDescription = ""
-    @State private var selectedTask: Task?
-    @State private var hasUnsavedChanges = false
     
     var body: some View {
         VStack(spacing: 0) {
@@ -39,7 +37,7 @@ struct TimerControlsView: View {
                     }
                     .buttonStyle(.plain)
                     .scaleEffect(newTimerDescription.isEmpty ? 0.98 : 1)
-                    .animation(.snappy(duration: 0.18), value: newTimerDescription.isEmpty)
+                    .animation(AppTheme.Animation.standard, value: newTimerDescription.isEmpty)
                 }
                 .padding(.horizontal, 16)
                 .padding(.bottom, 20)
@@ -68,7 +66,7 @@ struct TimerControlsView: View {
                 List {
                     Section {
                         ForEach(activeTasks) { task in
-                            ActiveTimerRow(task: task, selectedTask: $selectedTask, hasUnsavedChanges: $hasUnsavedChanges)
+                            ActiveTimerRow(task: task)
                         }
                     } header: {
                         Text("ACTIVE TIMERS")
@@ -90,18 +88,18 @@ struct TimerControlsView: View {
     }
 }
 
-/**
- * An active task/timer in the sidebar.
- */
+/// An active task/timer in the sidebar.
 struct ActiveTimerRow: View {
     @Bindable var task: Task
-    @Binding var selectedTask: Task?
-    @Binding var hasUnsavedChanges: Bool
-    
+
     @Environment(AppManager.self) private var manager
     @Environment(\.undoManager) private var undoManager
     @State private var isHovering = false
-    
+
+    private var showingPopover: Bool {
+        manager.popoverLocation == .sidebar(taskID: task.id)
+    }
+
     var body: some View {
         let _ = manager.lastTick
         HStack(spacing: 12) {
@@ -109,23 +107,23 @@ struct ActiveTimerRow: View {
                 Text(task.taskDescription)
                     .font(.system(size: 13, weight: .medium))
                     .foregroundStyle(AppTheme.Colors.textPrimary)
-                
+
                 HStack(spacing: 6) {
                     Circle()
                         .fill(AppTheme.Colors.activeTimer)
                         .frame(width: 6, height: 6)
                         .symbolEffect(.pulse, value: manager.lastTick)
                         .offset(x: 1)
-                    
+
                     Text(task.formattedDuration)
                         .font(.system(size: 11, weight: .medium, design: .monospaced))
                         .foregroundColor(AppTheme.Colors.activeTimer)
                         .symbolEffect(.pulse)
                 }
             }
-            
+
             Spacer()
-            
+
             Button {
                 withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
                     manager.stopTimer(task, undoManager: undoManager)
@@ -148,15 +146,19 @@ struct ActiveTimerRow: View {
             RoundedRectangle(cornerRadius: 8)
                 .fill(isHovering ? AppTheme.Colors.tertiaryFill : .clear)
         )
-        .animation(.snappy(duration: 0.18), value: isHovering)
+        .animation(AppTheme.Animation.standard, value: isHovering)
         .onTapGesture {
-            selectedTask = task
+            manager.openPopover(for: task, from: .sidebar(taskID: task.id))
+            manager.selectTask(task)
         }
-        .popover(item: Binding(
-            get: { selectedTask?.id == task.id ? selectedTask : nil },
-            set: { if $0 == nil { selectedTask = nil } }
-        ), arrowEdge: .trailing) { task in
-            EditTaskView(task: task, hasUnsavedChanges: $hasUnsavedChanges)
+        .popover(
+            isPresented: Binding(
+                get: { showingPopover },
+                set: { if !$0 { manager.closePopover() } }
+            ),
+            arrowEdge: .trailing
+        ) {
+            EditTaskView(task: task, manager: manager)
                 .presentationCompactAdaptation(.none)
         }
         .onHover { hovering in

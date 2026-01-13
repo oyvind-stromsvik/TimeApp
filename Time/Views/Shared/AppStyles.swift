@@ -118,3 +118,28 @@ struct PressedButtonStyle: ButtonStyle {
             .animation(.snappy(duration: 0.1), value: configuration.isPressed)
     }
 }
+
+// MARK: - Unsaved Changes Alert
+
+private struct UnsavedChangesAlertModifier: ViewModifier {
+    @Bindable var manager: AppManager
+
+    func body(content: Content) -> some View {
+        content
+            .alert("Unsaved Changes", isPresented: $manager.showingDiscardAlert) {
+                Button("Discard", role: .destructive) {
+                    manager.discardChangesAndDeselect()
+                }
+                Button("Keep Editing", role: .cancel) { }
+            } message: {
+                Text("You have unsaved changes. Do you want to discard them?")
+            }
+    }
+}
+
+extension View {
+    /// Adds the standard unsaved changes alert using the centralized manager state.
+    func unsavedChangesAlert(manager: AppManager) -> some View {
+        modifier(UnsavedChangesAlertModifier(manager: manager))
+    }
+}
