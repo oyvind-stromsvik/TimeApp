@@ -33,6 +33,35 @@ struct TimeApp: App {
         .modelContainer(sharedModelContainer)
         .commands {
             SidebarCommands()
+            CommandGroup(replacing: .appInfo) {
+                Button("About Time") {
+                    let credits = NSMutableAttributedString()
+                    
+                    let paragraphStyle = NSMutableParagraphStyle()
+                    paragraphStyle.alignment = .center
+                    
+                    let normalAttributes: [NSAttributedString.Key: Any] = [
+                        .font: NSFont.systemFont(ofSize: NSFont.smallSystemFontSize),
+                        .foregroundColor: NSColor.labelColor,
+                        .paragraphStyle: paragraphStyle
+                    ]
+                    
+                    let linkAttributes: [NSAttributedString.Key: Any] = [
+                        .font: NSFont.systemFont(ofSize: NSFont.smallSystemFontSize),
+                        .foregroundColor: NSColor.linkColor,
+                        .underlineStyle: NSUnderlineStyle.single.rawValue,
+                        .link: URL(string: "https://github.com/oyvind-stromsvik")!,
+                        .paragraphStyle: paragraphStyle
+                    ]
+                    
+                    credits.append(NSAttributedString(string: "Made by Øyvind Strømsvik\n\n", attributes: normalAttributes))
+                    credits.append(NSAttributedString(string: "GitHub Profile", attributes: linkAttributes))
+                    
+                    NSApp.orderFrontStandardAboutPanel(options: [
+                        .credits: credits
+                    ])
+                }
+            }
             CommandGroup(replacing: .undoRedo) {
                 Button("Undo") {
                     NSApp.sendAction(Selector(("undo:")), to: nil, from: nil)
