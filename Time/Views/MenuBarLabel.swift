@@ -1,8 +1,15 @@
 import SwiftUI
 import SwiftData
+import AppKit
 
 struct MenuBarLabel: View {
     let manager: AppManager
+    
+    private var menuBarIcon: NSImage {
+        let icon = NSApplication.shared.applicationIconImage.copy() as! NSImage
+        icon.size = NSSize(width: 18, height: 18)
+        return icon
+    }
     
     var body: some View {
         // Accessing lastTick ensures this view redraws every second (if the timer is running)
@@ -10,8 +17,11 @@ struct MenuBarLabel: View {
         let activeTasks = manager.activeTasks
         
         HStack {
-            Image(systemName: "timer")
-                .foregroundColor(activeTasks.isEmpty ? .red : .blue)
+            Image(nsImage: menuBarIcon)
+                .resizable()
+                .aspectRatio(contentMode: .fit)
+                .frame(width: 18, height: 18)
+                .opacity(activeTasks.isEmpty ? 0.5 : 1.0)
             
             if activeTasks.isEmpty {
                 Text("NO ACTIVE TASKS")
