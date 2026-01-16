@@ -12,9 +12,6 @@ struct DayView: View {
     // Zoom/Scale: Height of one hour in points
     @State private var hourHeight: CGFloat = AppTheme.Timeline.defaultHourHeight
     @State private var popoverJustClosed = false
-
-    @State private var showingCalendarPopover = false
-    @State private var showingZoomPopover = false
     
     init(date: Date) {
         self.date = date
@@ -56,6 +53,79 @@ struct DayView: View {
     
     var body: some View {
         VStack(spacing: 0) {
+            // Secondary Toolbar
+            HStack(spacing: 20) {
+                // Date Navigation
+                HStack(spacing: 1) {
+                    Button {
+                        onDateChange(previousDay(from: date))
+                    } label: {
+                        Image(systemName: "chevron.left")
+                            .imageScale(.medium)
+                            .frame(width: 28, height: 26)
+                    }
+                    
+                    Divider().frame(height: 16)
+                    
+                    Button {
+                        onDateChange(Date())
+                    } label: {
+                        Text("Today")
+                            .font(.system(size: 13, weight: .medium))
+                            .frame(height: 26)
+                            .padding(.horizontal, 8)
+                    }
+
+                    Divider().frame(height: 16)
+                    
+                    Button {
+                        onDateChange(nextDay(from: date))
+                    } label: {
+                        Image(systemName: "chevron.right")
+                            .imageScale(.medium)
+                            .frame(width: 28, height: 26)
+                    }
+                }
+                .buttonStyle(.borderless)
+                .background(RoundedRectangle(cornerRadius: 6).fill(Color.secondary.opacity(0.1)))
+                
+                Text(formattedDateForHeader(date))
+                    .font(.system(size: 15, weight: .semibold))
+                
+                Spacer()
+                
+                // Zoom Controls
+                HStack(spacing: 10) {
+                    Button {
+                        withAnimation(AppTheme.Animation.standard) {
+                            hourHeight = max(AppTheme.Timeline.minHourHeight, hourHeight - AppTheme.Timeline.hourHeightStep)
+                        }
+                    } label: {
+                        Image(systemName: "minus.magnifyingglass")
+                    }
+                    .buttonStyle(.borderless)
+                    .disabled(hourHeight <= AppTheme.Timeline.minHourHeight)
+
+                    Slider(value: $hourHeight, in: AppTheme.Timeline.minHourHeight...AppTheme.Timeline.maxHourHeight)
+                        .frame(width: 100)
+                        .controlSize(.mini)
+
+                    Button {
+                        withAnimation(AppTheme.Animation.standard) {
+                            hourHeight = min(AppTheme.Timeline.maxHourHeight, hourHeight + AppTheme.Timeline.hourHeightStep)
+                        }
+                    } label: {
+                        Image(systemName: "plus.magnifyingglass")
+                    }
+                    .buttonStyle(.borderless)
+                    .disabled(hourHeight >= AppTheme.Timeline.maxHourHeight)
+                }
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 8)
+            .background(.regularMaterial)
+            .overlay(alignment: .bottom) { Divider() }
+
             ScrollViewReader { proxy in
                 ScrollView {
                     ZStack(alignment: .topLeading) {
@@ -97,129 +167,7 @@ struct DayView: View {
             }
         }
         .background(AppTheme.Colors.background)
-        .navigationTitle(formattedDateForTitlebar(date))
-        .toolbarTitleDisplayMode(.inline)
         .toolbar {
-            ToolbarItem(placement: .navigation) {
-                ViewThatFits {
-                    HStack(spacing: 6) {
-                        Button {
-                            onDateChange(previousDay(from: date))
-                        } label: {
-                            Label("Previous Day", systemImage: "chevron.left")
-                        }
-
-                        Button {
-                            onDateChange(nextDay(from: date))
-                        } label: {
-                            Label("Next Day", systemImage: "chevron.right")
-                        }
-
-                        Button {
-                            onDateChange(Date())
-                        } label: {
-                            Text("Today")
-                        }
-                    }
-                    .labelStyle(.iconOnly)
-                    .controlSize(.small)
-
-                    Menu {
-                        Button {
-                            onDateChange(previousDay(from: date))
-                        } label: {
-                            Label("Previous Day", systemImage: "chevron.left")
-                        }
-                        Button {
-                            onDateChange(nextDay(from: date))
-                        } label: {
-                            Label("Next Day", systemImage: "chevron.right")
-                        }
-                        Divider()
-                        Button {
-                            onDateChange(Date())
-                        } label: {
-                            Label("Today", systemImage: "calendar")
-                        }
-                    } label: {
-                        Image(systemName: "calendar")
-                    }
-                    .menuStyle(.borderlessButton)
-                    .controlSize(.small)
-                    .help("Day navigation")
-                }
-            }
-
-            ToolbarItem(placement: .principal) {
-                Button {
-                    showingCalendarPopover.toggle()
-                } label: {
-                    HStack(spacing: 8) {
-                        Text(formattedDateForHeader(date))
-                            .font(.system(size: 14, weight: .semibold))
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.85)
-
-                        Image(systemName: "calendar")
-                            .font(.system(size: 13, weight: .semibold))
-                            .foregroundStyle(.secondary)
-                    }
-                }
-                .buttonStyle(.plain)
-                .popover(isPresented: $showingCalendarPopover, arrowEdge: .top) {
-                    calendarPopover
-                }
-            }
-
-            ToolbarItem(placement: .automatic) {
-                ViewThatFits {
-                    Button {
-                        showingZoomPopover.toggle()
-                    } label: {
-                        Label("Zoom", systemImage: "magnifyingglass")
-                    }
-                    .help("Zoom timeline")
-                    .popover(isPresented: $showingZoomPopover, arrowEdge: .top) {
-                        zoomPopover
-                    }
-
-                    Menu {
-                        Button {
-                            withAnimation(AppTheme.Animation.standard) {
-                                hourHeight = max(AppTheme.Timeline.minHourHeight, hourHeight - AppTheme.Timeline.hourHeightStep)
-                            }
-                        } label: {
-                            Label("Zoom Out", systemImage: "minus.magnifyingglass")
-                        }
-                        .disabled(hourHeight <= AppTheme.Timeline.minHourHeight)
-
-                        Button {
-                            withAnimation(AppTheme.Animation.standard) {
-                                hourHeight = min(AppTheme.Timeline.maxHourHeight, hourHeight + AppTheme.Timeline.hourHeightStep)
-                            }
-                        } label: {
-                            Label("Zoom In", systemImage: "plus.magnifyingglass")
-                        }
-                        .disabled(hourHeight >= AppTheme.Timeline.maxHourHeight)
-
-                        Divider()
-
-                        Button {
-                            withAnimation(AppTheme.Animation.standard) {
-                                hourHeight = AppTheme.Timeline.defaultHourHeight
-                            }
-                        } label: {
-                            Label("Reset Zoom", systemImage: "arrow.counterclockwise")
-                        }
-                    } label: {
-                        Image(systemName: "magnifyingglass")
-                    }
-                    .menuStyle(.borderlessButton)
-                    .controlSize(.small)
-                    .help("Zoom timeline")
-                }
-            }
-
             ToolbarItem(placement: .status) {
                 HStack(spacing: 6) {
                     let _ = manager.lastTick
@@ -273,90 +221,7 @@ struct DayView: View {
         }
     }
 
-    private var calendarPopover: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            DatePicker(
-                "",
-                selection: Binding(
-                    get: { date },
-                    set: { newDate in
-                        onDateChange(newDate)
-                    }
-                ),
-                displayedComponents: [.date]
-            )
-            .datePickerStyle(.graphical)
-            .labelsHidden()
 
-            HStack {
-                Button("Close") { showingCalendarPopover = false }
-                    .keyboardShortcut(.escape, modifiers: [])
-                Spacer()
-                Button("Today") {
-                    onDateChange(Date())
-                    showingCalendarPopover = false
-                }
-                .keyboardShortcut(.defaultAction)
-            }
-        }
-        .padding(12)
-        .frame(width: 280)
-        .background(.regularMaterial)
-    }
-
-    private var zoomPopover: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack(spacing: 8) {
-                Text("Zoom")
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(.secondary)
-
-                Spacer()
-
-                Button {
-                    withAnimation(AppTheme.Animation.standard) {
-                        hourHeight = AppTheme.Timeline.defaultHourHeight
-                    }
-                } label: {
-                    Text("Reset")
-                }
-                .buttonStyle(.borderless)
-                .foregroundStyle(.secondary)
-            }
-
-            HStack(spacing: 10) {
-                Button {
-                    withAnimation(AppTheme.Animation.standard) {
-                        hourHeight = max(AppTheme.Timeline.minHourHeight, hourHeight - AppTheme.Timeline.hourHeightStep)
-                    }
-                } label: {
-                    Image(systemName: "minus")
-                        .frame(width: 24, height: 20)
-                }
-                .buttonStyle(.bordered)
-                .controlSize(.small)
-                .disabled(hourHeight <= AppTheme.Timeline.minHourHeight)
-
-                Slider(value: $hourHeight, in: AppTheme.Timeline.minHourHeight...AppTheme.Timeline.maxHourHeight)
-                    .frame(width: 180)
-
-                Button {
-                    withAnimation(AppTheme.Animation.standard) {
-                        hourHeight = min(AppTheme.Timeline.maxHourHeight, hourHeight + AppTheme.Timeline.hourHeightStep)
-                    }
-                } label: {
-                    Image(systemName: "plus")
-                        .frame(width: 24, height: 20)
-                }
-                .buttonStyle(.bordered)
-                .controlSize(.small)
-                .disabled(hourHeight >= AppTheme.Timeline.maxHourHeight)
-            }
-        }
-        .padding(12)
-        .frame(width: 300)
-        .background(.regularMaterial)
-    }
 
     private func previousDay(from date: Date) -> Date {
         Calendar.current.date(byAdding: .day, value: -1, to: date) ?? date

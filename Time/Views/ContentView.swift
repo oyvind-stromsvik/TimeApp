@@ -16,17 +16,6 @@ struct ContentView: View {
         } detail: {
             DayView(date: selectedDate, onDateChange: { selectedDate = $0 })
                 .frame(minWidth: 100, idealWidth: AppTheme.mainWidth, maxWidth: .infinity)
-                .toolbar {
-                    ToolbarItem(placement: .navigation) {
-                        Button {
-                            withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
-                                columnVisibility = columnVisibility == .detailOnly ? .all : .detailOnly
-                            }
-                        } label: {
-                            Label("Toggle Sidebar", systemImage: "sidebar.left")
-                        }
-                    }
-                }
         }
         .alert("Time to Track!", isPresented: $bindableManager.showAggressiveAlert) {
             Button("OK", role: .cancel) { }
