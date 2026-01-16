@@ -5,17 +5,34 @@ struct ContentView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(AppManager.self) private var manager
     @State private var selectedDate = Date()
-    @State private var columnVisibility = NavigationSplitViewVisibility.all
     
     var body: some View {
         @Bindable var bindableManager = manager
         
-        NavigationSplitView(columnVisibility: $columnVisibility) {
-            TimerControlsView()
-                .navigationSplitViewColumnWidth(min: 100, ideal: AppTheme.sidebarWidth, max: 400)
-        } detail: {
+        HStack(spacing: 0) {
+            if manager.isSidebarVisible {
+                TimerControlsView()
+                    .frame(width: AppTheme.sidebarWidth)
+                    .background(.regularMaterial)
+                    .transition(.move(edge: .leading))
+                
+                Divider()
+            }
+            
             DayView(date: selectedDate, onDateChange: { selectedDate = $0 })
                 .frame(minWidth: 100, idealWidth: AppTheme.mainWidth, maxWidth: .infinity)
+        }
+        .toolbar {
+            ToolbarItem(placement: .navigation) {
+                Button {
+                    withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+                        manager.isSidebarVisible.toggle()
+                    }
+                } label: {
+                    Label("Toggle Sidebar", systemImage: "sidebar.left")
+                }
+                .keyboardShortcut("0", modifiers: .command)
+            }
         }
         .alert("Time to Track!", isPresented: $bindableManager.showAggressiveAlert) {
             Button("OK", role: .cancel) { }

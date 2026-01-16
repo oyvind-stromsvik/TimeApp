@@ -32,7 +32,14 @@ struct TimeApp: App {
         }
         .modelContainer(sharedModelContainer)
         .commands {
-            SidebarCommands()
+            CommandGroup(replacing: .sidebar) {
+                Button(manager.isSidebarVisible ? "Hide Sidebar" : "Show Sidebar") {
+                    withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+                        manager.isSidebarVisible.toggle()
+                    }
+                }
+                .keyboardShortcut("s", modifiers: [.control, .command])
+            }
             CommandGroup(replacing: .appInfo) {
                 Button("About Time") {
                     let credits = NSMutableAttributedString()

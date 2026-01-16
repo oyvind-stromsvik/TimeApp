@@ -24,6 +24,9 @@ class AppManager: NSObject, UNUserNotificationCenterDelegate {
 
     // UI binding for aggressive alert
     var showAggressiveAlert: Bool = false
+    
+    // UI binding for sidebar visibility
+    var isSidebarVisible: Bool = true
 
     // MARK: - Centralized Selection State
     var selectedTask: Task?
