@@ -6,18 +6,29 @@ import CoreGraphics
 
 @Observable
 class AppManager: NSObject, UNUserNotificationCenterDelegate {
-    private var timer: Timer?
+    private var timerService: TimerService
+    private var systemService: SystemService
     private var modelContext: ModelContext
+    private var userDefaults: UserDefaults
     
     // Track when we last notified the user about being idle
     private var lastIdleAlert: Date = Date()
     private var lastAggressiveAlert: Date = Date()
     
-    // How long (in seconds) the user must be idle before we show an alert
-    private let idleThreshold: TimeInterval = 300
+    // Settings from UserDefaults
+    private var idleThreshold: TimeInterval {
+        let value = userDefaults.double(forKey: "idleThreshold")
+        return max(value, 60) // Clamp to minimum 1 minute
+    }
     
-    // How long (in seconds) the user must be idle before we show an alert
-    private let aggressiveThreshold: TimeInterval = 60
+    private var aggressiveThreshold: TimeInterval {
+        let value = userDefaults.double(forKey: "aggressiveThreshold")
+        return max(value, 30) // Clamp to minimum 30 seconds
+    }
+    
+    private var isAggressiveAlertEnabled: Bool {
+        userDefaults.bool(forKey: "enableAggressiveAlerts")
+    }
     
     // This property is just to trigger UI updates for active timers
     var lastTick: Date = Date()
@@ -56,9 +67,23 @@ class AppManager: NSObject, UNUserNotificationCenterDelegate {
         hasUnsavedChanges = false
     }
 
-    init(modelContext: ModelContext) {
+    init(modelContext: ModelContext, 
+         timerService: TimerService = DefaultTimerService(),
+         systemService: SystemService = DefaultSystemService(),
+         userDefaults: UserDefaults = .standard) {
         self.modelContext = modelContext
+        self.timerService = timerService
+        self.systemService = systemService
+        self.userDefaults = userDefaults
         super.init()
+        
+        // Register default settings if not set
+        userDefaults.register(defaults: [
+             "idleThreshold": 300.0,
+             "aggressiveThreshold": 60.0,
+             "enableAggressiveAlerts": true
+        ])
+        
         requestNotificationPermission()
         UNUserNotificationCenter.current().delegate = self
         startTimer()
@@ -85,15 +110,16 @@ class AppManager: NSObject, UNUserNotificationCenterDelegate {
     }
     
     deinit {
-        timer?.invalidate()
+        timerService.stop()
     }
     
     private func startTimer() {
-        timer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
+        timerService.onTick = { [weak self] in
             guard let self else { return }
             self.lastTick = Date()
             self.checkIdleStatus()
         }
+        timerService.start(interval: 1.0)
     }
 
     /**
@@ -105,6 +131,8 @@ class AppManager: NSObject, UNUserNotificationCenterDelegate {
     private func checkIdleStatus() {
         // Case 1: No active timer -> Aggressively alert
         if activeTasks.isEmpty {
+            guard isAggressiveAlertEnabled else { return }
+            
             if Date().timeIntervalSince(lastAggressiveAlert) < aggressiveThreshold {
                 return
             }
@@ -115,7 +143,8 @@ class AppManager: NSObject, UNUserNotificationCenterDelegate {
         }
         // Case 2: Active timer -> Check for idle
         else {
-            guard let idleTime = getSystemIdleTime() else { return }
+            guard let idleTime = systemService.getIdleTime() else { return }
+            
             if idleTime < idleThreshold || Date().timeIntervalSince(lastIdleAlert) < idleThreshold {
                 return
             }
@@ -126,14 +155,6 @@ class AppManager: NSObject, UNUserNotificationCenterDelegate {
         }
     }
     
-    private func getSystemIdleTime() -> TimeInterval? {
-        // kCGAnyInputEventType is ~0 (UInt32.max)
-        if let eventType = CGEventType(rawValue: UInt32.max) {
-             return CGEventSource.secondsSinceLastEventType(.hidSystemState, eventType: eventType)
-        }
-        return nil
-    }
-
     private func sendIdleNotification() {
         let content = UNMutableNotificationContent()
         content.title = "Are you working?"

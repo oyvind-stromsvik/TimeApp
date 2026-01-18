@@ -7,14 +7,7 @@
 	objects = {
 
 /* Begin PBXContainerItemProxy section */
-		843C7AD22E10A6DB005B8CBA /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = 843C7AB92E10A6D9005B8CBA /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = 843C7AC02E10A6D9005B8CBA;
-			remoteInfo = Time;
-		};
-		843C7ADC2E10A6DB005B8CBA /* PBXContainerItemProxy */ = {
+		84B903F52F1D3C4D009A3500 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 843C7AB92E10A6D9005B8CBA /* Project object */;
 			proxyType = 1;
@@ -25,14 +18,18 @@
 
 /* Begin PBXFileReference section */
 		843C7AC12E10A6D9005B8CBA /* Time.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Time.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		843C7AD12E10A6DB005B8CBA /* TimeTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = TimeTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
-		843C7ADB2E10A6DB005B8CBA /* TimeUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = TimeUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		84B903F12F1D3C4D009A3500 /* TimeTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = TimeTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		843C7AC32E10A6D9005B8CBA /* Time */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = Time;
+			sourceTree = "<group>";
+		};
+		84B903F22F1D3C4D009A3500 /* TimeTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = TimeTests;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -45,14 +42,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		843C7ACE2E10A6DB005B8CBA /* Frameworks */ = {
-			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		843C7AD82E10A6DB005B8CBA /* Frameworks */ = {
+		84B903EE2F1D3C4D009A3500 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -66,6 +56,7 @@
 			isa = PBXGroup;
 			children = (
 				843C7AC32E10A6D9005B8CBA /* Time */,
+				84B903F22F1D3C4D009A3500 /* TimeTests */,
 				843C7AC22E10A6D9005B8CBA /* Products */,
 			);
 			sourceTree = "<group>";
@@ -74,8 +65,7 @@
 			isa = PBXGroup;
 			children = (
 				843C7AC12E10A6D9005B8CBA /* Time.app */,
-				843C7AD12E10A6DB005B8CBA /* TimeTests.xctest */,
-				843C7ADB2E10A6DB005B8CBA /* TimeUITests.xctest */,
+				84B903F12F1D3C4D009A3500 /* TimeTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -105,45 +95,28 @@
 			productReference = 843C7AC12E10A6D9005B8CBA /* Time.app */;
 			productType = "com.apple.product-type.application";
 		};
-		843C7AD02E10A6DB005B8CBA /* TimeTests */ = {
+		84B903F02F1D3C4D009A3500 /* TimeTests */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 843C7AE82E10A6DB005B8CBA /* Build configuration list for PBXNativeTarget "TimeTests" */;
+			buildConfigurationList = 84B903F72F1D3C4D009A3500 /* Build configuration list for PBXNativeTarget "TimeTests" */;
 			buildPhases = (
-				843C7ACD2E10A6DB005B8CBA /* Sources */,
-				843C7ACE2E10A6DB005B8CBA /* Frameworks */,
-				843C7ACF2E10A6DB005B8CBA /* Resources */,
+				84B903ED2F1D3C4D009A3500 /* Sources */,
+				84B903EE2F1D3C4D009A3500 /* Frameworks */,
+				84B903EF2F1D3C4D009A3500 /* Resources */,
 			);
 			buildRules = (
 			);
 			dependencies = (
-				843C7AD32E10A6DB005B8CBA /* PBXTargetDependency */,
+				84B903F62F1D3C4D009A3500 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				84B903F22F1D3C4D009A3500 /* TimeTests */,
 			);
 			name = TimeTests;
 			packageProductDependencies = (
 			);
 			productName = TimeTests;
-			productReference = 843C7AD12E10A6DB005B8CBA /* TimeTests.xctest */;
+			productReference = 84B903F12F1D3C4D009A3500 /* TimeTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
-		};
-		843C7ADA2E10A6DB005B8CBA /* TimeUITests */ = {
-			isa = PBXNativeTarget;
-			buildConfigurationList = 843C7AEB2E10A6DB005B8CBA /* Build configuration list for PBXNativeTarget "TimeUITests" */;
-			buildPhases = (
-				843C7AD72E10A6DB005B8CBA /* Sources */,
-				843C7AD82E10A6DB005B8CBA /* Frameworks */,
-				843C7AD92E10A6DB005B8CBA /* Resources */,
-			);
-			buildRules = (
-			);
-			dependencies = (
-				843C7ADD2E10A6DB005B8CBA /* PBXTargetDependency */,
-			);
-			name = TimeUITests;
-			packageProductDependencies = (
-			);
-			productName = TimeUITests;
-			productReference = 843C7ADB2E10A6DB005B8CBA /* TimeUITests.xctest */;
-			productType = "com.apple.product-type.bundle.ui-testing";
 		};
 /* End PBXNativeTarget section */
 
@@ -152,18 +125,14 @@
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
-				LastSwiftUpdateCheck = 1640;
+				LastSwiftUpdateCheck = 2620;
 				LastUpgradeCheck = 2610;
 				TargetAttributes = {
 					843C7AC02E10A6D9005B8CBA = {
 						CreatedOnToolsVersion = 16.4;
 					};
-					843C7AD02E10A6DB005B8CBA = {
-						CreatedOnToolsVersion = 16.4;
-						TestTargetID = 843C7AC02E10A6D9005B8CBA;
-					};
-					843C7ADA2E10A6DB005B8CBA = {
-						CreatedOnToolsVersion = 16.4;
+					84B903F02F1D3C4D009A3500 = {
+						CreatedOnToolsVersion = 26.2;
 						TestTargetID = 843C7AC02E10A6D9005B8CBA;
 					};
 				};
@@ -183,8 +152,7 @@
 			projectRoot = "";
 			targets = (
 				843C7AC02E10A6D9005B8CBA /* Time */,
-				843C7AD02E10A6DB005B8CBA /* TimeTests */,
-				843C7ADA2E10A6DB005B8CBA /* TimeUITests */,
+				84B903F02F1D3C4D009A3500 /* TimeTests */,
 			);
 		};
 /* End PBXProject section */
@@ -197,14 +165,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		843C7ACF2E10A6DB005B8CBA /* Resources */ = {
-			isa = PBXResourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		843C7AD92E10A6DB005B8CBA /* Resources */ = {
+		84B903EF2F1D3C4D009A3500 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -221,14 +182,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		843C7ACD2E10A6DB005B8CBA /* Sources */ = {
-			isa = PBXSourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		843C7AD72E10A6DB005B8CBA /* Sources */ = {
+		84B903ED2F1D3C4D009A3500 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -238,15 +192,10 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
-		843C7AD32E10A6DB005B8CBA /* PBXTargetDependency */ = {
+		84B903F62F1D3C4D009A3500 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = 843C7AC02E10A6D9005B8CBA /* Time */;
-			targetProxy = 843C7AD22E10A6DB005B8CBA /* PBXContainerItemProxy */;
-		};
-		843C7ADD2E10A6DB005B8CBA /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			target = 843C7AC02E10A6D9005B8CBA /* Time */;
-			targetProxy = 843C7ADC2E10A6DB005B8CBA /* PBXContainerItemProxy */;
+			targetProxy = 84B903F52F1D3C4D009A3500 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -443,75 +392,45 @@
 			};
 			name = Release;
 		};
-		843C7AE92E10A6DB005B8CBA /* Debug */ = {
+		84B903F82F1D3C4D009A3500 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = 3BU9U6Z99V;
 				GENERATE_INFOPLIST_FILE = YES;
-				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MACOSX_DEPLOYMENT_TARGET = 15.7;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = TwiiK.TimeTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Time.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Time";
 			};
 			name = Debug;
 		};
-		843C7AEA2E10A6DB005B8CBA /* Release */ = {
+		84B903F92F1D3C4D009A3500 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = 3BU9U6Z99V;
 				GENERATE_INFOPLIST_FILE = YES;
-				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MACOSX_DEPLOYMENT_TARGET = 15.7;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = TwiiK.TimeTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Time.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Time";
-			};
-			name = Release;
-		};
-		843C7AEC2E10A6DB005B8CBA /* Debug */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
-				DEAD_CODE_STRIPPING = YES;
-				DEVELOPMENT_TEAM = 3BU9U6Z99V;
-				GENERATE_INFOPLIST_FILE = YES;
-				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = TwiiK.TimeUITests;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SWIFT_EMIT_LOC_STRINGS = NO;
-				SWIFT_VERSION = 5.0;
-				TEST_TARGET_NAME = Time;
-			};
-			name = Debug;
-		};
-		843C7AED2E10A6DB005B8CBA /* Release */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
-				DEAD_CODE_STRIPPING = YES;
-				DEVELOPMENT_TEAM = 3BU9U6Z99V;
-				GENERATE_INFOPLIST_FILE = YES;
-				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = TwiiK.TimeUITests;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SWIFT_EMIT_LOC_STRINGS = NO;
-				SWIFT_VERSION = 5.0;
-				TEST_TARGET_NAME = Time;
 			};
 			name = Release;
 		};
@@ -536,20 +455,11 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		843C7AE82E10A6DB005B8CBA /* Build configuration list for PBXNativeTarget "TimeTests" */ = {
+		84B903F72F1D3C4D009A3500 /* Build configuration list for PBXNativeTarget "TimeTests" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				843C7AE92E10A6DB005B8CBA /* Debug */,
-				843C7AEA2E10A6DB005B8CBA /* Release */,
-			);
-			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
-		};
-		843C7AEB2E10A6DB005B8CBA /* Build configuration list for PBXNativeTarget "TimeUITests" */ = {
-			isa = XCConfigurationList;
-			buildConfigurations = (
-				843C7AEC2E10A6DB005B8CBA /* Debug */,
-				843C7AED2E10A6DB005B8CBA /* Release */,
+				84B903F82F1D3C4D009A3500 /* Debug */,
+				84B903F92F1D3C4D009A3500 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

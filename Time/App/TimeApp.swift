@@ -31,6 +31,11 @@ struct TimeApp: App {
                 .environment(manager)
         }
         .modelContainer(sharedModelContainer)
+        
+        Settings {
+            SettingsView()
+        }
+
         .commands {
             CommandGroup(replacing: .sidebar) {
                 Button(manager.isSidebarVisible ? "Hide Sidebar" : "Show Sidebar") {
