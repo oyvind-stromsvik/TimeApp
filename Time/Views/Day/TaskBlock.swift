@@ -87,6 +87,10 @@ struct TaskBlock: View {
             if isDragging || isResizing { TimeLabel(date: task.endTime ?? Date(), isTop: false) }
         }
         .contextMenu {
+            Button("Edit") {
+                manager.openPopover(for: task, from: .dayView(taskID: task.id))
+                manager.selectTask(task)
+            }
             Button("Duplicate") { manager.duplicateTask(task, undoManager: undoManager) }
             Divider()
             Button("Delete", role: .destructive) { manager.deleteTask(task, undoManager: undoManager) }
@@ -125,7 +129,13 @@ struct TaskBlock: View {
                 isHovering: isHovering,
                 isResizing: $isResizing,
                 onResize: updateStartTime,
-                onEnded: handleResizeEnded
+                onEnded: handleResizeEnded,
+                onTap: {
+                    manager.openPopover(for: task, from: .dayView(taskID: task.id))
+                    manager.selectTask(task)
+                },
+                onDuplicate: { manager.duplicateTask(task, undoManager: undoManager) },
+                onDelete: { manager.deleteTask(task, undoManager: undoManager) }
             )
             .offset(y: -8)
         }
@@ -135,7 +145,13 @@ struct TaskBlock: View {
                 isHovering: isHovering,
                 isResizing: $isResizing,
                 onResize: updateEndTime,
-                onEnded: handleResizeEnded
+                onEnded: handleResizeEnded,
+                onTap: {
+                    manager.openPopover(for: task, from: .dayView(taskID: task.id))
+                    manager.selectTask(task)
+                },
+                onDuplicate: { manager.duplicateTask(task, undoManager: undoManager) },
+                onDelete: { manager.deleteTask(task, undoManager: undoManager) }
             )
             .offset(y: 8)
         }
@@ -266,8 +282,12 @@ struct ResizeHandle: View {
     @Binding var isResizing: Bool
     let onResize: (CGFloat) -> Void
     let onEnded: () -> Void
-    
+    let onTap: () -> Void
+    let onDuplicate: () -> Void
+    let onDelete: () -> Void
+
     @State private var isLocalHovering = false
+    @State private var didDrag = false
 
     var body: some View {
         Rectangle()
@@ -284,14 +304,28 @@ struct ResizeHandle: View {
             .onHover { hovering in
                 isLocalHovering = hovering
             }
+            .contextMenu {
+                Button("Edit") { onTap() }
+                Button("Duplicate") { onDuplicate() }
+                Divider()
+                Button("Delete", role: .destructive) { onDelete() }
+            }
             .highPriorityGesture(
                 DragGesture(minimumDistance: 0, coordinateSpace: .named("timeline"))
                     .onChanged { value in
-                        isResizing = true
-                        onResize(value.translation.height)
+                        if abs(value.translation.height) > 2 {
+                            didDrag = true
+                            isResizing = true
+                            onResize(value.translation.height)
+                        }
                     }
                     .onEnded { _ in
-                        onEnded()
+                        if didDrag {
+                            onEnded()
+                        } else {
+                            onTap()
+                        }
+                        didDrag = false
                     }
             )
     }
