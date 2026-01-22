@@ -2,60 +2,39 @@ import SwiftUI
 import SwiftData
 
 struct TimerControlsView: View {
+    let selectedDate: Date
+
     @Environment(\.modelContext) private var modelContext
     @Environment(AppManager.self) private var manager
-    @Environment(\.undoManager) private var undoManager
     @Query(filter: #Predicate<Task> { $0.isActive == true }, sort: \Task.startTime) private var activeTasks: [Task]
     @Query(sort: \Task.startTime, order: .reverse) private var allTasks: [Task]
 
-    @State private var newTimerDescription = ""
-
-    private var todaysTasks: [Task] {
+    private var selectedDayTasks: [Task] {
         let calendar = Calendar.current
-        let today = calendar.startOfDay(for: Date())
-        let tomorrow = calendar.date(byAdding: .day, value: 1, to: today)!
+        let startOfDay = calendar.startOfDay(for: selectedDate)
+        let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay)!
 
         return allTasks.filter { task in
-            task.startTime >= today && task.startTime < tomorrow && !task.isActive
+            task.startTime >= startOfDay && task.startTime < endOfDay && !task.isActive
+        }
+    }
+
+    private var isViewingToday: Bool {
+        Calendar.current.isDateInToday(selectedDate)
+    }
+
+    private var tasksHeaderTitle: String {
+        if isViewingToday {
+            return "TODAY'S TASKS"
+        } else {
+            let formatter = DateFormatter()
+            formatter.dateFormat = "MMM d"
+            return formatter.string(from: selectedDate).uppercased()
         }
     }
     
     var body: some View {
         VStack(spacing: 0) {
-            VStack(alignment: .leading, spacing: 8) {
-                Text("START NEW TIMER")
-                    .appSectionHeader()
-                    .padding(.horizontal, 16)
-                    .padding(.top, 16)
-
-                HStack(spacing: 8) {
-                    TextField("What are you working on?", text: $newTimerDescription)
-                        .textFieldStyle(.plain)
-                        .appCardField(padding: 10, cornerRadius: 8)
-                        .onSubmit(startTimer)
-                        .overlay {
-                            RoundedRectangle(cornerRadius: 8)
-                                .stroke(AppTheme.Colors.separator.opacity(0.35), lineWidth: 1)
-                        }
-
-                    Button(action: startTimer) {
-                        AppCircleIcon(
-                            systemName: "play.fill",
-                            size: 32,
-                            iconSize: 12,
-                            background: AppTheme.Gradients.accentGradient
-                        )
-                    }
-                    .buttonStyle(.plain)
-                    .scaleEffect(newTimerDescription.isEmpty ? 0.98 : 1)
-                    .animation(AppTheme.Animation.standard, value: newTimerDescription.isEmpty)
-                }
-                .padding(.horizontal, 16)
-                .padding(.bottom, 20)
-            }
-
-            Divider()
-
             List {
                 if !activeTasks.isEmpty {
                     Section {
@@ -87,13 +66,13 @@ struct TimerControlsView: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
 
-                if !todaysTasks.isEmpty {
+                if !selectedDayTasks.isEmpty {
                     Section {
-                        ForEach(todaysTasks) { task in
+                        ForEach(selectedDayTasks) { task in
                             CompletedTaskRow(task: task)
                         }
                     } header: {
-                        Text("TODAY'S TASKS")
+                        Text(tasksHeaderTitle)
                             .appSectionHeader()
                             .padding(.vertical, 8)
                     }
@@ -103,12 +82,6 @@ struct TimerControlsView: View {
             .scrollContentBackground(.hidden)
         }
         .background(AppTheme.Surfaces.sidebar)
-    }
-    
-    private func startTimer() {
-        let description = newTimerDescription.isEmpty ? "New task" : newTimerDescription
-        manager.addNewTask(description: description, startTime: Date(), endTime: nil, isActive: true, undoManager: undoManager)
-        newTimerDescription = ""
     }
 }
 
@@ -302,7 +275,7 @@ struct CompletedTaskRow: View {
     let task2 = Task(taskDescription: "Working on UI Previews", startTime: start2, isActive: true)
     container.mainContext.insert(task2)
     
-    return TimerControlsView()
+    return TimerControlsView(selectedDate: today)
         .modelContainer(container)
         .environment(manager)
 }

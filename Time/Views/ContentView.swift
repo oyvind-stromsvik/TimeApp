@@ -4,30 +4,108 @@ import SwiftData
 struct ContentView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(AppManager.self) private var manager
+    @Environment(\.undoManager) private var undoManager
     @State private var selectedDate = Date()
-    
+    @State private var newTimerDescription = ""
+    @State private var hourHeight: CGFloat = AppTheme.Timeline.defaultHourHeight
+
     var body: some View {
         @Bindable var bindableManager = manager
-        
-        HStack(spacing: 0) {
-            SidebarContainer(
-                isVisible: Binding(
-                    get: { manager.isSidebarVisible },
-                    set: { manager.isSidebarVisible = $0 }
-                ),
-                width: Binding(
-                    get: { manager.sidebarWidth },
-                    set: { manager.sidebarWidth = $0 }
-                )
-            ) {
-                TimerControlsView()
-                    .background(.regularMaterial)
+
+        VStack(spacing: 0) {
+            // Secondary Toolbar - spans full width over sidebar
+            HStack(spacing: 20) {
+                // Date Navigation
+                HStack(spacing: 1) {
+                    Button {
+                        selectedDate = previousDay(from: selectedDate)
+                    } label: {
+                        Image(systemName: "chevron.left")
+                            .imageScale(.medium)
+                            .frame(width: 28, height: 26)
+                    }
+
+                    Divider().frame(height: 16)
+
+                    Button {
+                        selectedDate = Date()
+                    } label: {
+                        Text("Today")
+                            .font(.system(size: 13, weight: .medium))
+                            .frame(height: 26)
+                            .padding(.horizontal, 8)
+                    }
+
+                    Divider().frame(height: 16)
+
+                    Button {
+                        selectedDate = nextDay(from: selectedDate)
+                    } label: {
+                        Image(systemName: "chevron.right")
+                            .imageScale(.medium)
+                            .frame(width: 28, height: 26)
+                    }
+                }
+                .buttonStyle(.borderless)
+                .background(RoundedRectangle(cornerRadius: 6).fill(Color.secondary.opacity(0.1)))
+
+                Text(formattedDateForHeader(selectedDate))
+                    .font(.system(size: 15, weight: .semibold))
+
+                Spacer()
+
+                // Zoom Controls
+                HStack(spacing: 10) {
+                    Button {
+                        withAnimation(AppTheme.Animation.standard) {
+                            hourHeight = max(AppTheme.Timeline.minHourHeight, hourHeight - AppTheme.Timeline.hourHeightStep)
+                        }
+                    } label: {
+                        Image(systemName: "minus.magnifyingglass")
+                    }
+                    .buttonStyle(.borderless)
+                    .disabled(hourHeight <= AppTheme.Timeline.minHourHeight)
+
+                    Slider(value: $hourHeight, in: AppTheme.Timeline.minHourHeight...AppTheme.Timeline.maxHourHeight)
+                        .frame(width: 100)
+                        .controlSize(.mini)
+
+                    Button {
+                        withAnimation(AppTheme.Animation.standard) {
+                            hourHeight = min(AppTheme.Timeline.maxHourHeight, hourHeight + AppTheme.Timeline.hourHeightStep)
+                        }
+                    } label: {
+                        Image(systemName: "plus.magnifyingglass")
+                    }
+                    .buttonStyle(.borderless)
+                    .disabled(hourHeight >= AppTheme.Timeline.maxHourHeight)
+                }
             }
-            
-            Divider()
-            
-            DayView(date: selectedDate, onDateChange: { selectedDate = $0 })
-                .frame(minWidth: 100, idealWidth: AppTheme.mainWidth, maxWidth: .infinity)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 8)
+            .background(.regularMaterial)
+            .overlay(alignment: .bottom) { Divider() }
+
+            HStack(spacing: 0) {
+                SidebarContainer(
+                    isVisible: Binding(
+                        get: { manager.isSidebarVisible },
+                        set: { manager.isSidebarVisible = $0 }
+                    ),
+                    width: Binding(
+                        get: { manager.sidebarWidth },
+                        set: { manager.sidebarWidth = $0 }
+                    )
+                ) {
+                    TimerControlsView(selectedDate: selectedDate)
+                        .background(.regularMaterial)
+                }
+
+                Divider()
+
+                DayView(date: selectedDate, onDateChange: { selectedDate = $0 }, hourHeight: $hourHeight)
+                    .frame(minWidth: 100, idealWidth: AppTheme.mainWidth, maxWidth: .infinity)
+            }
         }
         .coordinateSpace(name: "contentArea")
         .toolbar {
@@ -41,12 +119,53 @@ struct ContentView: View {
                 }
                 .keyboardShortcut("0", modifiers: .command)
             }
+
+            ToolbarItem(placement: .principal) {
+                HStack(spacing: 8) {
+                    TextField("What are you working on?", text: $newTimerDescription)
+                        .textFieldStyle(.plain)
+                        .appCardField(padding: 8, cornerRadius: 6)
+                        .frame(width: 300)
+                        .onSubmit(startTimer)
+
+                    Button(action: startTimer) {
+                        AppCircleIcon(
+                            systemName: "play.fill",
+                            size: 28,
+                            iconSize: 11,
+                            background: AppTheme.Gradients.accentGradient
+                        )
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
         }
         .alert("Time to Track!", isPresented: $bindableManager.showAggressiveAlert) {
             Button("OK", role: .cancel) { }
         } message: {
             Text("You have no active timers running.")
         }
+    }
+
+    private func startTimer() {
+        let description = newTimerDescription.isEmpty ? "New task" : newTimerDescription
+        manager.addNewTask(description: description, startTime: Date(), endTime: nil, isActive: true, undoManager: undoManager)
+        newTimerDescription = ""
+    }
+
+    private func previousDay(from date: Date) -> Date {
+        Calendar.current.date(byAdding: .day, value: -1, to: date) ?? date
+    }
+
+    private func nextDay(from date: Date) -> Date {
+        Calendar.current.date(byAdding: .day, value: 1, to: date) ?? date
+    }
+
+    private func formattedDateForHeader(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.locale = .current
+        formatter.setLocalizedDateFormatFromTemplate("EEE, MMM d")
+        return formatter.string(from: date)
     }
 }
 
