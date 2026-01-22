@@ -205,19 +205,6 @@ struct TaskStackView: View {
         tasks.reduce(0) { $0 + $1.duration }
     }
 
-    private var timeRange: String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "HH:mm"
-
-        if let earliest = tasks.map({ $0.startTime }).min(),
-           let latest = tasks.compactMap({ $0.endTime }).max() {
-            let start = formatter.string(from: earliest)
-            let end = formatter.string(from: latest)
-            return "\(start) - \(end)"
-        }
-        return ""
-    }
-
     var body: some View {
         VStack(spacing: 0) {
             // Stack header (collapsed view)
@@ -250,23 +237,13 @@ struct TaskStackView: View {
                             .padding(.vertical, 2)
                             .background(
                                 Capsule()
-                                    .fill(AppTheme.Colors.accent.opacity(0.8))
+                                    .fill(AppTheme.Colors.textSecondary.opacity(0.7))
                             )
                     }
 
-                    HStack(spacing: AppTheme.Spacing.sm) {
-                        Text(timeRange)
-                            .font(.system(size: AppTheme.Typography.body, weight: .regular, design: .monospaced))
-                            .foregroundColor(AppTheme.Colors.textSecondary)
-
-                        Text("•")
-                            .font(.system(size: AppTheme.Typography.body))
-                            .foregroundColor(AppTheme.Colors.textSecondary)
-
-                        Text(Task.formatDuration(totalDuration))
-                            .font(.system(size: AppTheme.Typography.body, weight: .medium, design: .monospaced))
-                            .foregroundColor(AppTheme.Colors.textSecondary)
-                    }
+                    Text(Task.formatDuration(totalDuration))
+                        .font(.system(size: AppTheme.Typography.body, weight: .medium, design: .monospaced))
+                        .foregroundColor(AppTheme.Colors.textSecondary)
                 }
 
                 Spacer()
@@ -290,7 +267,6 @@ struct TaskStackView: View {
                         .cursor(.pointingHand)
                     }
                     .buttonStyle(.plain)
-                    .transition(.scale.combined(with: .opacity))
                 }
             }
             .padding(.vertical, AppTheme.Spacing.md)
@@ -358,17 +334,6 @@ struct CompletedTaskRow: View {
         manager.popoverLocation == .sidebar(taskID: task.id)
     }
 
-    private var timeRange: String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "HH:mm"
-        let start = formatter.string(from: task.startTime)
-        if let end = task.endTime {
-            let endStr = formatter.string(from: end)
-            return "\(start) - \(endStr)"
-        }
-        return start
-    }
-
     var body: some View {
         HStack(spacing: AppTheme.Spacing.xl) {
             VStack(alignment: .leading, spacing: AppTheme.Spacing.itemSpacing) {
@@ -376,19 +341,9 @@ struct CompletedTaskRow: View {
                     .font(AppTheme.Typography.rowPrimaryText())
                     .foregroundStyle(AppTheme.Colors.textPrimary)
 
-                HStack(spacing: AppTheme.Spacing.sm) {
-                    Text(timeRange)
-                        .font(.system(size: AppTheme.Typography.body, weight: .regular, design: .monospaced))
-                        .foregroundColor(AppTheme.Colors.textSecondary)
-
-                    Text("•")
-                        .font(.system(size: AppTheme.Typography.body))
-                        .foregroundColor(AppTheme.Colors.textSecondary)
-
-                    Text(task.formattedDuration)
-                        .font(.system(size: AppTheme.Typography.body, weight: .medium, design: .monospaced))
-                        .foregroundColor(AppTheme.Colors.textSecondary)
-                }
+                Text(task.formattedDuration)
+                    .font(.system(size: AppTheme.Typography.body, weight: .medium, design: .monospaced))
+                    .foregroundColor(AppTheme.Colors.textSecondary)
             }
 
             Spacer()
@@ -412,7 +367,6 @@ struct CompletedTaskRow: View {
                     .cursor(.pointingHand)
                 }
                 .buttonStyle(.plain)
-                .transition(.scale.combined(with: .opacity))
             }
         }
         .padding(.vertical, isInStack ? AppTheme.Spacing.sm : AppTheme.Spacing.md)
