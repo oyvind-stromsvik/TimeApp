@@ -6,8 +6,19 @@ struct TimerControlsView: View {
     @Environment(AppManager.self) private var manager
     @Environment(\.undoManager) private var undoManager
     @Query(filter: #Predicate<Task> { $0.isActive == true }, sort: \Task.startTime) private var activeTasks: [Task]
+    @Query(sort: \Task.startTime, order: .reverse) private var allTasks: [Task]
 
     @State private var newTimerDescription = ""
+
+    private var todaysTasks: [Task] {
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        let tomorrow = calendar.date(byAdding: .day, value: 1, to: today)!
+
+        return allTasks.filter { task in
+            task.startTime >= today && task.startTime < tomorrow && !task.isActive
+        }
+    }
     
     var body: some View {
         VStack(spacing: 0) {
@@ -16,7 +27,7 @@ struct TimerControlsView: View {
                     .appSectionHeader()
                     .padding(.horizontal, 16)
                     .padding(.top, 16)
-                
+
                 HStack(spacing: 8) {
                     TextField("What are you working on?", text: $newTimerDescription)
                         .textFieldStyle(.plain)
@@ -26,7 +37,7 @@ struct TimerControlsView: View {
                             RoundedRectangle(cornerRadius: 8)
                                 .stroke(AppTheme.Colors.separator.opacity(0.35), lineWidth: 1)
                         }
-                    
+
                     Button(action: startTimer) {
                         AppCircleIcon(
                             systemName: "play.fill",
@@ -42,28 +53,11 @@ struct TimerControlsView: View {
                 .padding(.horizontal, 16)
                 .padding(.bottom, 20)
             }
-            
+
             Divider()
-            
-            if activeTasks.isEmpty {
-                VStack(spacing: 16) {
-                    Image(systemName: "timer")
-                        .font(.system(size: 40, weight: .ultraLight))
-                        .foregroundStyle(AppTheme.Colors.textSecondary.opacity(AppTheme.Opacity.secondaryTextFaint))
-                    
-                    
-                    Text("No Active Timers")
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundStyle(.secondary)
-                    Text("Start a new timer to begin tracking time.")
-                        .font(.system(size: 11))
-                        .foregroundStyle(AppTheme.Colors.textSecondary.opacity(AppTheme.Opacity.secondaryTextStrong))
-                        .multilineTextAlignment(.center)
-                        .padding(.horizontal, 40)
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else {
-                List {
+
+            List {
+                if !activeTasks.isEmpty {
                     Section {
                         ForEach(activeTasks) { task in
                             ActiveTimerRow(task: task)
@@ -74,9 +68,39 @@ struct TimerControlsView: View {
                             .padding(.vertical, 8)
                     }
                 }
-                .listStyle(.sidebar)
-                .scrollContentBackground(.hidden)
+                else {
+                    VStack(spacing: 16) {
+                        Image(systemName: "timer")
+                            .font(.system(size: 40, weight: .ultraLight))
+                            .foregroundStyle(AppTheme.Colors.textSecondary.opacity(AppTheme.Opacity.secondaryTextFaint))
+
+
+                        Text("No Active Timers")
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundStyle(.secondary)
+                        Text("Start a new timer to begin tracking time.")
+                            .font(.system(size: 11))
+                            .foregroundStyle(AppTheme.Colors.textSecondary.opacity(AppTheme.Opacity.secondaryTextStrong))
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal, 40)
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                }
+
+                if !todaysTasks.isEmpty {
+                    Section {
+                        ForEach(todaysTasks) { task in
+                            CompletedTaskRow(task: task)
+                        }
+                    } header: {
+                        Text("TODAY'S TASKS")
+                            .appSectionHeader()
+                            .padding(.vertical, 8)
+                    }
+                }
             }
+            .listStyle(.sidebar)
+            .scrollContentBackground(.hidden)
         }
         .background(AppTheme.Surfaces.sidebar)
     }
@@ -138,6 +162,80 @@ struct ActiveTimerRow: View {
                 .cursor(.pointingHand)
             }
             .buttonStyle(.plain)
+        }
+        .padding(.vertical, 4)
+        .padding(.horizontal, 6)
+        .contentShape(RoundedRectangle(cornerRadius: 8))
+        .background(
+            RoundedRectangle(cornerRadius: 8)
+                .fill(isHovering ? AppTheme.Colors.tertiaryFill : .clear)
+        )
+        .animation(AppTheme.Animation.standard, value: isHovering)
+        .onTapGesture {
+            manager.openPopover(for: task, from: .sidebar(taskID: task.id))
+            manager.selectTask(task)
+        }
+        .popover(
+            isPresented: Binding(
+                get: { showingPopover },
+                set: { if !$0 { manager.closePopover() } }
+            ),
+            arrowEdge: .trailing
+        ) {
+            EditTaskView(task: task, manager: manager)
+                .presentationCompactAdaptation(.none)
+        }
+        .onHover { hovering in
+            isHovering = hovering
+        }
+    }
+}
+
+/// A completed task row in the sidebar.
+struct CompletedTaskRow: View {
+    @Bindable var task: Task
+
+    @Environment(AppManager.self) private var manager
+    @State private var isHovering = false
+
+    private var showingPopover: Bool {
+        manager.popoverLocation == .sidebar(taskID: task.id)
+    }
+
+    private var timeRange: String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "HH:mm"
+        let start = formatter.string(from: task.startTime)
+        if let end = task.endTime {
+            let endStr = formatter.string(from: end)
+            return "\(start) - \(endStr)"
+        }
+        return start
+    }
+
+    var body: some View {
+        HStack(spacing: 12) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(task.taskDescription)
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(AppTheme.Colors.textPrimary)
+
+                HStack(spacing: 6) {
+                    Text(timeRange)
+                        .font(.system(size: 11, weight: .regular, design: .monospaced))
+                        .foregroundColor(AppTheme.Colors.textSecondary)
+
+                    Text("•")
+                        .font(.system(size: 11))
+                        .foregroundColor(AppTheme.Colors.textSecondary)
+
+                    Text(task.formattedDuration)
+                        .font(.system(size: 11, weight: .medium, design: .monospaced))
+                        .foregroundColor(AppTheme.Colors.textSecondary)
+                }
+            }
+
+            Spacer()
         }
         .padding(.vertical, 4)
         .padding(.horizontal, 6)
