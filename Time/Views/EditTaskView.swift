@@ -100,17 +100,21 @@ struct EditTaskView: View {
                                 .frame(maxWidth: .infinity)
                                 .onChange(of: startTime) { _, _ in updateDurationFromTimes() }
                                 .appCardField(padding: 5, cornerRadius: 5, disabledStyle: isActive)
-                            
+
                             Image(systemName: "arrow.right")
                                 .font(.system(size: 13, weight: .bold))
                                 .foregroundColor(AppTheme.Colors.textSecondary.opacity(AppTheme.Opacity.secondaryTextMedium))
-                            
+
                             DatePicker("", selection: $endTime, displayedComponents: .hourAndMinute)
                                 .datePickerStyle(.stepperField)
                                 .frame(maxWidth: .infinity)
                                 .disabled(isActive)
                                 .onChange(of: endTime) { _, _ in updateDurationFromTimes() }
                                 .appCardField(padding: 5, cornerRadius: 5, disabledStyle: isActive)
+                        }
+                        .onKeyPress(.return) {
+                            saveChanges()
+                            return .handled
                         }
                     }
        
