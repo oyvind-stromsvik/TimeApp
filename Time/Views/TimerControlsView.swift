@@ -211,9 +211,7 @@ struct TaskStackView: View {
             HStack(spacing: AppTheme.Spacing.xl) {
                 // Expand/collapse button
                 Button {
-                    withAnimation(AppTheme.Animation.standard) {
-                        isExpanded.toggle()
-                    }
+                    isExpanded.toggle()
                 } label: {
                     Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
                         .font(.system(size: 9, weight: .semibold))
@@ -303,19 +301,16 @@ struct TaskStackView: View {
             )
             .appShadow(AppTheme.Shadows.soft)
             .onHover { hovering in
-                withAnimation(AppTheme.Animation.standard) {
-                    isHovering = hovering
-                }
+                isHovering = hovering
             }
 
             // Expanded task list
             if isExpanded {
-                VStack(spacing: AppTheme.Spacing.xs) {
+                VStack(spacing: 0) {
                     ForEach(tasks) { task in
                         CompletedTaskRow(task: task, isInStack: true)
                     }
                 }
-                .padding(.top, AppTheme.Spacing.sm)
             }
         }
     }
