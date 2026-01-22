@@ -61,4 +61,11 @@ final class Task: Identifiable {
         let otherEnd = other.endTime ?? Date()
         return startTime < otherEnd && other.startTime < selfEnd
     }
+
+    // Helper to check overlap with a consistent reference time for active tasks
+    func overlaps(with other: Task, at referenceTime: Date) -> Bool {
+        let selfEnd = endTime ?? referenceTime
+        let otherEnd = other.endTime ?? referenceTime
+        return startTime < otherEnd && other.startTime < selfEnd
+    }
 }

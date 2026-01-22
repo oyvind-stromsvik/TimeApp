@@ -196,6 +196,7 @@ struct CompletedTaskRow: View {
     @Bindable var task: Task
 
     @Environment(AppManager.self) private var manager
+    @Environment(\.undoManager) private var undoManager
     @State private var isHovering = false
 
     private var showingPopover: Bool {
@@ -236,6 +237,28 @@ struct CompletedTaskRow: View {
             }
 
             Spacer()
+
+            if isHovering {
+                Button {
+                    manager.addNewTask(
+                        description: task.taskDescription,
+                        startTime: Date(),
+                        endTime: nil,
+                        isActive: true,
+                        undoManager: undoManager
+                    )
+                } label: {
+                    AppCircleIcon(
+                        systemName: "play.fill",
+                        size: 26,
+                        iconSize: 10,
+                        background: AppTheme.Gradients.accentGradient
+                    )
+                    .cursor(.pointingHand)
+                }
+                .buttonStyle(.plain)
+                .transition(.scale.combined(with: .opacity))
+            }
         }
         .padding(.vertical, 4)
         .padding(.horizontal, 6)

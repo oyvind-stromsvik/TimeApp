@@ -18,7 +18,8 @@ struct TaskLayoutView: View {
 
     var body: some View {
         let tick = currentTick // Capture tick to create dependency
-        let groupedTasks = calculateHorizontalLayout()
+        let referenceTime = Date() // Use consistent time for layout calculations
+        let groupedTasks = calculateHorizontalLayout(at: referenceTime)
 
         GeometryReader { geo in
             ZStack(alignment: .topLeading) {
@@ -60,7 +61,7 @@ struct TaskLayoutView: View {
         let offsetXPercent: CGFloat
     }
 
-    private func calculateHorizontalLayout() -> [TaskLayout] {
+    private func calculateHorizontalLayout(at referenceTime: Date) -> [TaskLayout] {
         guard !tasks.isEmpty else { return [] }
 
         var layouts: [TaskLayout] = []
@@ -75,7 +76,7 @@ struct TaskLayoutView: View {
                 changed = false
                 for other in tasks {
                     if !processedIds.contains(other.id) && !group.contains(where: { $0.id == other.id }) {
-                        if group.contains(where: { $0.overlaps(with: other) }) {
+                        if group.contains(where: { $0.overlaps(with: other, at: referenceTime) }) {
                             group.append(other)
                             changed = true
                         }
@@ -89,7 +90,7 @@ struct TaskLayoutView: View {
             for item in group {
                 var assigned = false
                 for (index, col) in columns.enumerated() {
-                    if !col.contains(where: { $0.overlaps(with: item) }) {
+                    if !col.contains(where: { $0.overlaps(with: item, at: referenceTime) }) {
                         columns[index].append(item)
                         assigned = true
                         break
