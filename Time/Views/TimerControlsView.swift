@@ -19,6 +19,10 @@ struct TimerControlsView: View {
         }
     }
 
+    private var groupedTasks: [String: [Task]] {
+        Dictionary(grouping: selectedDayTasks) { $0.taskDescription }
+    }
+
     private var isViewingToday: Bool {
         Calendar.current.isDateInToday(selectedDate)
     }
@@ -68,8 +72,13 @@ struct TimerControlsView: View {
 
                 if !selectedDayTasks.isEmpty {
                     Section {
-                        ForEach(selectedDayTasks) { task in
-                            CompletedTaskRow(task: task)
+                        ForEach(groupedTasks.keys.sorted(), id: \.self) { taskName in
+                            let tasks = groupedTasks[taskName]!.sorted { $0.startTime > $1.startTime }
+                            if tasks.count > 1 {
+                                TaskStackView(tasks: tasks)
+                            } else {
+                                CompletedTaskRow(task: tasks[0])
+                            }
                         }
                     } header: {
                         Text(tasksHeaderTitle)
@@ -136,7 +145,22 @@ struct ActiveTimerRow: View {
             }
             .buttonStyle(.plain)
         }
-        .taskRowStyle(isHovering: isHovering)
+        .padding(.vertical, AppTheme.Spacing.md)
+        .padding(.horizontal, AppTheme.Spacing.lg)
+        .background(
+            RoundedRectangle(cornerRadius: AppTheme.CornerRadius.card)
+                .fill(AppTheme.Colors.cardBackground)
+                .overlay(
+                    RoundedRectangle(cornerRadius: AppTheme.CornerRadius.card)
+                        .strokeBorder(AppTheme.Colors.separator.opacity(0.5), lineWidth: 0.5)
+                )
+                .appShadow(AppTheme.Shadows.soft)
+                .overlay(
+                    RoundedRectangle(cornerRadius: AppTheme.CornerRadius.card)
+                        .fill(isHovering ? AppTheme.Colors.tertiaryFill : .clear)
+                )
+        )
+        .animation(AppTheme.Animation.standard, value: isHovering)
         .onTapGesture {
             manager.openPopover(for: task, from: .sidebar(taskID: task.id))
             manager.selectTask(task)
@@ -152,7 +176,171 @@ struct ActiveTimerRow: View {
                 .presentationCompactAdaptation(.none)
         }
         .onHover { hovering in
-            isHovering = hovering
+            withAnimation(AppTheme.Animation.standard) {
+                isHovering = hovering
+            }
+        }
+        .contextMenu {
+            Button("Edit") {
+                manager.openPopover(for: task, from: .sidebar(taskID: task.id))
+                manager.selectTask(task)
+            }
+            Button("Duplicate") { manager.duplicateTask(task, undoManager: undoManager) }
+            Divider()
+            Button("Delete", role: .destructive) { manager.deleteTask(task, undoManager: undoManager) }
+        }
+    }
+}
+
+/// A stack of tasks with the same name that can be expanded/collapsed.
+struct TaskStackView: View {
+    let tasks: [Task]
+
+    @Environment(AppManager.self) private var manager
+    @Environment(\.undoManager) private var undoManager
+    @State private var isExpanded = false
+    @State private var isHovering = false
+
+    private var totalDuration: TimeInterval {
+        tasks.reduce(0) { $0 + $1.duration }
+    }
+
+    private var timeRange: String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "HH:mm"
+
+        if let earliest = tasks.map({ $0.startTime }).min(),
+           let latest = tasks.compactMap({ $0.endTime }).max() {
+            let start = formatter.string(from: earliest)
+            let end = formatter.string(from: latest)
+            return "\(start) - \(end)"
+        }
+        return ""
+    }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            // Stack header (collapsed view)
+            HStack(spacing: AppTheme.Spacing.xl) {
+                // Expand/collapse button
+                Button {
+                    withAnimation(AppTheme.Animation.standard) {
+                        isExpanded.toggle()
+                    }
+                } label: {
+                    Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
+                        .font(.system(size: 9, weight: .semibold))
+                        .foregroundColor(AppTheme.Colors.textSecondary)
+                        .frame(width: 12, height: 12)
+                }
+                .buttonStyle(.plain)
+                .cursor(.pointingHand)
+
+                VStack(alignment: .leading, spacing: AppTheme.Spacing.itemSpacing) {
+                    HStack {
+                        Text(tasks[0].taskDescription)
+                            .font(AppTheme.Typography.rowPrimaryText())
+                            .foregroundStyle(AppTheme.Colors.textPrimary)
+
+                        // Stack count badge
+                        Text("\(tasks.count)")
+                            .font(.system(size: 9, weight: .semibold))
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 5)
+                            .padding(.vertical, 2)
+                            .background(
+                                Capsule()
+                                    .fill(AppTheme.Colors.accent.opacity(0.8))
+                            )
+                    }
+
+                    HStack(spacing: AppTheme.Spacing.sm) {
+                        Text(timeRange)
+                            .font(.system(size: AppTheme.Typography.body, weight: .regular, design: .monospaced))
+                            .foregroundColor(AppTheme.Colors.textSecondary)
+
+                        Text("•")
+                            .font(.system(size: AppTheme.Typography.body))
+                            .foregroundColor(AppTheme.Colors.textSecondary)
+
+                        Text(Task.formatDuration(totalDuration))
+                            .font(.system(size: AppTheme.Typography.body, weight: .medium, design: .monospaced))
+                            .foregroundColor(AppTheme.Colors.textSecondary)
+                    }
+                }
+
+                Spacer()
+
+                if isHovering && !isExpanded {
+                    Button {
+                        manager.addNewTask(
+                            description: tasks[0].taskDescription,
+                            startTime: Date(),
+                            endTime: nil,
+                            isActive: true,
+                            undoManager: undoManager
+                        )
+                    } label: {
+                        AppCircleIcon(
+                            systemName: "play.fill",
+                            size: 26,
+                            iconSize: 10,
+                            background: AppTheme.Gradients.accentGradient
+                        )
+                        .cursor(.pointingHand)
+                    }
+                    .buttonStyle(.plain)
+                    .transition(.scale.combined(with: .opacity))
+                }
+            }
+            .padding(.vertical, AppTheme.Spacing.md)
+            .padding(.horizontal, AppTheme.Spacing.lg)
+            .background(
+                ZStack {
+                    // Card background
+                    RoundedRectangle(cornerRadius: AppTheme.CornerRadius.card)
+                        .fill(AppTheme.Colors.cardBackground)
+
+                    // Stack effect - show multiple layers when collapsed
+                    if !isExpanded {
+                        RoundedRectangle(cornerRadius: AppTheme.CornerRadius.card)
+                            .fill(AppTheme.Colors.cardBackground)
+                            .offset(x: 0, y: -2)
+                            .opacity(0.5)
+
+                        RoundedRectangle(cornerRadius: AppTheme.CornerRadius.card)
+                            .fill(AppTheme.Colors.cardBackground)
+                            .offset(x: 0, y: -4)
+                            .opacity(0.25)
+                    }
+
+                    // Hover effect
+                    if isHovering {
+                        RoundedRectangle(cornerRadius: AppTheme.CornerRadius.card)
+                            .fill(AppTheme.Colors.tertiaryFill)
+                    }
+                }
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: AppTheme.CornerRadius.card)
+                    .strokeBorder(AppTheme.Colors.separator.opacity(0.5), lineWidth: 0.5)
+            )
+            .appShadow(AppTheme.Shadows.soft)
+            .onHover { hovering in
+                withAnimation(AppTheme.Animation.standard) {
+                    isHovering = hovering
+                }
+            }
+
+            // Expanded task list
+            if isExpanded {
+                VStack(spacing: AppTheme.Spacing.xs) {
+                    ForEach(tasks) { task in
+                        CompletedTaskRow(task: task, isInStack: true)
+                    }
+                }
+                .padding(.top, AppTheme.Spacing.sm)
+            }
         }
     }
 }
@@ -160,6 +348,7 @@ struct ActiveTimerRow: View {
 /// A completed task row in the sidebar.
 struct CompletedTaskRow: View {
     @Bindable var task: Task
+    var isInStack: Bool = false
 
     @Environment(AppManager.self) private var manager
     @Environment(\.undoManager) private var undoManager
@@ -226,7 +415,31 @@ struct CompletedTaskRow: View {
                 .transition(.scale.combined(with: .opacity))
             }
         }
-        .taskRowStyle(isHovering: isHovering)
+        .padding(.vertical, isInStack ? AppTheme.Spacing.sm : AppTheme.Spacing.md)
+        .padding(.horizontal, isInStack ? AppTheme.Spacing.md : AppTheme.Spacing.lg)
+        .background(
+            Group {
+                if isInStack {
+                    // Simple background for tasks in stack
+                    RoundedRectangle(cornerRadius: AppTheme.CornerRadius.card)
+                        .fill(isHovering ? AppTheme.Colors.tertiaryFill : AppTheme.Colors.cardBackground.opacity(0.5))
+                } else {
+                    // Card-like appearance for standalone tasks
+                    RoundedRectangle(cornerRadius: AppTheme.CornerRadius.card)
+                        .fill(AppTheme.Colors.cardBackground)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: AppTheme.CornerRadius.card)
+                                .strokeBorder(AppTheme.Colors.separator.opacity(0.5), lineWidth: 0.5)
+                        )
+                        .appShadow(AppTheme.Shadows.soft)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: AppTheme.CornerRadius.card)
+                                .fill(isHovering ? AppTheme.Colors.tertiaryFill : .clear)
+                        )
+                }
+            }
+        )
+        .animation(AppTheme.Animation.standard, value: isHovering)
         .onTapGesture {
             manager.openPopover(for: task, from: .sidebar(taskID: task.id))
             manager.selectTask(task)
@@ -242,7 +455,18 @@ struct CompletedTaskRow: View {
                 .presentationCompactAdaptation(.none)
         }
         .onHover { hovering in
-            isHovering = hovering
+            withAnimation(AppTheme.Animation.standard) {
+                isHovering = hovering
+            }
+        }
+        .contextMenu {
+            Button("Edit") {
+                manager.openPopover(for: task, from: .sidebar(taskID: task.id))
+                manager.selectTask(task)
+            }
+            Button("Duplicate") { manager.duplicateTask(task, undoManager: undoManager) }
+            Divider()
+            Button("Delete", role: .destructive) { manager.deleteTask(task, undoManager: undoManager) }
         }
     }
 }
