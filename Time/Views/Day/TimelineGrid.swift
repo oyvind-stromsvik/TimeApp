@@ -8,7 +8,7 @@ struct TimelineGrid: View {
             ForEach(0..<AppTheme.Timeline.hoursPerDay, id: \.self) { hour in
                 HStack(alignment: .top, spacing: 0) {
                     Text(String(format: "%02d:00", hour))
-                        .font(.system(size: 10, weight: .semibold, design: .monospaced))
+                        .font(.system(size: AppTheme.Typography.caption2, weight: .semibold, design: .monospaced))
                         .foregroundStyle(.secondary)
                         .frame(width: AppTheme.Timeline.hourLabelWidth, alignment: .trailing)
                         .offset(x: AppTheme.Timeline.hourLabelOffsetX, y: AppTheme.Timeline.hourLabelOffsetY)

@@ -14,7 +14,7 @@ struct ContentView: View {
 
         VStack(spacing: 0) {
             // Secondary Toolbar - spans full width over sidebar
-            HStack(spacing: 20) {
+            HStack(spacing: AppTheme.Spacing.xxxl) {
                 // Date Navigation
                 HStack(spacing: 1) {
                     Button {
@@ -25,18 +25,18 @@ struct ContentView: View {
                             .frame(width: 28, height: 26)
                     }
 
-                    Divider().frame(height: 16)
+                    Divider().frame(height: AppTheme.Spacing.xxl)
 
                     Button {
                         selectedDate = Date()
                     } label: {
                         Text("Today")
-                            .font(.system(size: 13, weight: .medium))
+                            .font(AppTheme.Typography.rowPrimaryText())
                             .frame(height: 26)
-                            .padding(.horizontal, 8)
+                            .padding(.horizontal, AppTheme.Spacing.md)
                     }
 
-                    Divider().frame(height: 16)
+                    Divider().frame(height: AppTheme.Spacing.xxl)
 
                     Button {
                         selectedDate = nextDay(from: selectedDate)
@@ -47,15 +47,15 @@ struct ContentView: View {
                     }
                 }
                 .buttonStyle(.borderless)
-                .background(RoundedRectangle(cornerRadius: 6).fill(Color.secondary.opacity(0.1)))
+                .background(RoundedRectangle(cornerRadius: AppTheme.CornerRadius.md).fill(Color.secondary.opacity(0.1)))
 
                 Text(formattedDateForHeader(selectedDate))
-                    .font(.system(size: 15, weight: .semibold))
+                    .font(.system(size: AppTheme.Typography.headline, weight: .semibold))
 
                 Spacer()
 
                 // Zoom Controls
-                HStack(spacing: 10) {
+                HStack(spacing: AppTheme.Spacing.lg) {
                     Button {
                         withAnimation(AppTheme.Animation.standard) {
                             hourHeight = max(AppTheme.Timeline.minHourHeight, hourHeight - AppTheme.Timeline.hourHeightStep)
@@ -81,8 +81,8 @@ struct ContentView: View {
                     .disabled(hourHeight >= AppTheme.Timeline.maxHourHeight)
                 }
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 8)
+            .padding(.horizontal, AppTheme.Spacing.xxl)
+            .padding(.vertical, AppTheme.Spacing.md)
             .background(.regularMaterial)
             .overlay(alignment: .bottom) { Divider() }
 
@@ -121,10 +121,10 @@ struct ContentView: View {
             }
 
             ToolbarItem(placement: .principal) {
-                HStack(spacing: 8) {
+                HStack(spacing: AppTheme.Spacing.md) {
                     TextField("What are you working on?", text: $newTimerDescription)
                         .textFieldStyle(.plain)
-                        .appCardField(padding: 8, cornerRadius: 6)
+                        .appCardField(padding: AppTheme.Spacing.md, cornerRadius: AppTheme.CornerRadius.md)
                         .frame(width: 300)
                         .onSubmit(startTimer)
 

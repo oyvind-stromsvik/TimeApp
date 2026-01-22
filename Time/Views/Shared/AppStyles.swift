@@ -5,7 +5,7 @@ import SwiftUI
 private struct AppSectionHeaderModifier: ViewModifier {
     func body(content: Content) -> some View {
         content
-            .font(.system(size: 10, weight: .bold))
+            .font(AppTheme.Typography.sectionHeader())
             .foregroundStyle(.secondary)
     }
 }
@@ -34,8 +34,34 @@ private struct AppCardFieldModifier: ViewModifier {
 }
 
 extension View {
-    func appCardField(padding: CGFloat = 10, cornerRadius: CGFloat = 8, disabledStyle: Bool = false) -> some View {
+    func appCardField(padding: CGFloat = AppTheme.Spacing.lg, cornerRadius: CGFloat = AppTheme.CornerRadius.field, disabledStyle: Bool = false) -> some View {
         modifier(AppCardFieldModifier(padding: padding, cornerRadius: cornerRadius, isDisabledStyle: disabledStyle))
+    }
+}
+
+private struct TaskRowModifier: ViewModifier {
+    let isHovering: Bool
+
+    func body(content: Content) -> some View {
+        content
+            .padding(.vertical, AppTheme.Spacing.rowPaddingVertical)
+            .padding(.horizontal, AppTheme.Spacing.rowPaddingHorizontal)
+            .contentShape(RoundedRectangle(cornerRadius: AppTheme.CornerRadius.row))
+            .background(
+                RoundedRectangle(cornerRadius: AppTheme.CornerRadius.row)
+                    .fill(isHovering ? AppTheme.Colors.tertiaryFill : .clear)
+            )
+            .animation(AppTheme.Animation.standard, value: isHovering)
+    }
+}
+
+extension View {
+    func taskRowStyle(isHovering: Bool) -> some View {
+        modifier(TaskRowModifier(isHovering: isHovering))
+    }
+
+    func appShadow(_ shadow: Shadow) -> some View {
+        self.shadow(color: shadow.color, radius: shadow.radius, x: shadow.x, y: shadow.y)
     }
 }
 

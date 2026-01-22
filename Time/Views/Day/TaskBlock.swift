@@ -25,11 +25,11 @@ struct TaskBlock: View {
         let isSelected = task.id == manager.selectedTask?.id
         let isInteracting = isDragging || isResizing
 
-        VStack(alignment: .leading, spacing: 2) {
+        VStack(alignment: .leading, spacing: AppTheme.Spacing.xxs) {
             TaskContent(task: task, tick: tick)
         }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 8)
+        .padding(.horizontal, AppTheme.Spacing.cardPaddingHorizontal)
+        .padding(.vertical, AppTheme.Spacing.cardPaddingVertical)
         .frame(minWidth: 0, maxWidth: .infinity, minHeight: 0, maxHeight: .infinity, alignment: .topLeading)
         .clipped()
         .contentShape(Rectangle())
@@ -41,10 +41,10 @@ struct TaskBlock: View {
                 }
         )
         .background {
-            RoundedRectangle(cornerRadius: AppTheme.cardCornerRadius, style: .continuous)
+            RoundedRectangle(cornerRadius: AppTheme.CornerRadius.card, style: .continuous)
                 .fill(AppTheme.Colors.background)
                 .overlay {
-                    RoundedRectangle(cornerRadius: AppTheme.cardCornerRadius, style: .continuous)
+                    RoundedRectangle(cornerRadius: AppTheme.CornerRadius.card, style: .continuous)
                         .fill(
                             LinearGradient(
                                 colors: [tintColor.opacity(task.isActive ? 0.5 : 0.5), tintColor.opacity(0.1)],
@@ -54,18 +54,13 @@ struct TaskBlock: View {
                         )
                 }
                 .overlay {
-                    RoundedRectangle(cornerRadius: AppTheme.cardCornerRadius, style: .continuous)
+                    RoundedRectangle(cornerRadius: AppTheme.CornerRadius.card, style: .continuous)
                         .stroke(
                             isSelected ? AppTheme.Colors.accent.opacity(0.95) : AppTheme.Colors.separator.opacity(isHovering ? 0.55 : 0.35),
                             lineWidth: isSelected ? 2 : 1
                         )
                 }
-                .shadow(
-                    color: Color.black.opacity(isInteracting ? 0.14 : (isHovering ? 0.10 : 0.06)),
-                    radius: isInteracting ? 12 : (isHovering ? 8 : 4),
-                    x: 0,
-                    y: isInteracting ? 7 : (isHovering ? 5 : 2)
-                )
+                .appShadow(isInteracting ? AppTheme.Shadows.active : (isHovering ? AppTheme.Shadows.floating : AppTheme.Shadows.soft))
         }
         .scaleEffect(isInteracting ? 1.02 : (isHovering ? 1.01 : 1))
         .animation(AppTheme.Animation.standard, value: isHovering)
@@ -137,7 +132,7 @@ struct TaskBlock: View {
                 onDuplicate: { manager.duplicateTask(task, undoManager: undoManager) },
                 onDelete: { manager.deleteTask(task, undoManager: undoManager) }
             )
-            .offset(y: -8)
+            .offset(y: -AppTheme.Spacing.md)
         }
         .overlay(alignment: .bottom) {
             ResizeHandle(
@@ -153,7 +148,7 @@ struct TaskBlock: View {
                 onDuplicate: { manager.duplicateTask(task, undoManager: undoManager) },
                 onDelete: { manager.deleteTask(task, undoManager: undoManager) }
             )
-            .offset(y: 8)
+            .offset(y: AppTheme.Spacing.md)
         }
     }
 
@@ -234,15 +229,15 @@ struct TaskContent: View {
 
     var body: some View {
         HStack(alignment: .top) {
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: AppTheme.Spacing.xxs) {
                 Text(task.taskDescription)
-                    .font(.system(size: 12, weight: .semibold))
+                    .font(AppTheme.Typography.taskDescription())
                     .foregroundStyle(.primary)
                     .lineLimit(2)
                     .fixedSize(horizontal: false, vertical: true)
 
                 Text(formattedDuration)
-                    .font(.system(size: 10, weight: .medium))
+                    .font(.system(size: AppTheme.Typography.caption2, weight: .medium))
                     .monospacedDigit()
                     .foregroundStyle(task.isActive ? AppTheme.Colors.activeTimer : .secondary)
             }
@@ -251,7 +246,7 @@ struct TaskContent: View {
 
             if task.isActive {
                 Image(systemName: "timer")
-                    .font(.system(size: 11, weight: .semibold))
+                    .font(.system(size: AppTheme.Typography.body, weight: .semibold))
                     .foregroundColor(AppTheme.Colors.activeTimer)
                     .symbolEffect(.pulse)
             }
@@ -265,12 +260,12 @@ struct TimeLabel: View {
 
     var body: some View {
         Text(date.formatted(date: .omitted, time: .shortened))
-            .font(.system(size: 9, weight: .bold, design: .monospaced))
-            .padding(.horizontal, 6)
-            .padding(.vertical, 3)
+            .font(AppTheme.Typography.timeLabel())
+            .padding(.horizontal, AppTheme.Spacing.sm)
+            .padding(.vertical, AppTheme.Spacing.xxs)
             .background(AppTheme.Colors.timeLabelBackground)
             .foregroundColor(.white)
-            .cornerRadius(4)
+            .cornerRadius(AppTheme.CornerRadius.timeLabel)
             .offset(y: isTop ? -26 : 26)
             .zIndex(10)
     }

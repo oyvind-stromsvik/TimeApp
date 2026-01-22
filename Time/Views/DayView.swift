@@ -79,15 +79,15 @@ struct DayView: View {
         }
         .toolbar {
             ToolbarItem(placement: .status) {
-                HStack(spacing: 6) {
+                HStack(spacing: AppTheme.Spacing.sm) {
                     let _ = manager.lastTick
                     Image(systemName: "clock")
                         .foregroundStyle(.secondary)
                     Text(totalTimeFormatted)
-                        .font(.system(size: 12, weight: .semibold, design: .monospaced))
+                        .font(.system(size: AppTheme.Typography.bodyEmphasized, weight: .semibold, design: .monospaced))
                         .foregroundStyle(AppTheme.Colors.textPrimary)
                 }
-                .padding(.horizontal, 6)
+                .padding(.horizontal, AppTheme.Spacing.sm)
             }
         }
         .onChange(of: manager.selectedTask) { oldValue, newValue in

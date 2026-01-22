@@ -69,7 +69,87 @@ struct AppTheme {
         /// On appear, scroll to (currentHour - this offset).
         static let initialScrollHourOffset: Int = 1
     }
-    
+
+    struct Typography {
+        // Base font sizes
+        static let caption: CGFloat = 9           // TimeLabel timestamps
+        static let caption2: CGFloat = 10         // Section headers
+        static let body: CGFloat = 11             // Secondary text
+        static let bodyEmphasized: CGFloat = 12   // Task blocks
+        static let callout: CGFloat = 13          // Primary row text
+        static let subheadline: CGFloat = 14      // Empty state
+        static let headline: CGFloat = 15         // Headers
+        static let title: CGFloat = 20            // Duration display
+        static let largeTitle: CGFloat = 40       // Empty state icons
+
+        // Semantic font helpers
+        static func sectionHeader() -> Font {
+            .system(size: caption2, weight: .medium)
+        }
+
+        static func taskDescription() -> Font {
+            .system(size: bodyEmphasized)
+        }
+
+        static func rowPrimaryText() -> Font {
+            .system(size: callout)
+        }
+
+        static func rowSecondaryText() -> Font {
+            .system(size: body)
+        }
+
+        static func timeLabel() -> Font {
+            .system(size: caption, weight: .medium, design: .monospaced)
+        }
+
+        static func durationDisplay() -> Font {
+            .system(size: title, weight: .semibold, design: .monospaced)
+        }
+
+        static func emptyStateTitle() -> Font {
+            .system(size: subheadline, weight: .medium)
+        }
+    }
+
+    struct Spacing {
+        // Base scale
+        static let xxs: CGFloat = 2
+        static let xs: CGFloat = 4
+        static let sm: CGFloat = 6
+        static let md: CGFloat = 8
+        static let lg: CGFloat = 10
+        static let xl: CGFloat = 12
+        static let xxl: CGFloat = 16
+        static let xxxl: CGFloat = 20
+        static let huge: CGFloat = 40
+
+        // Semantic aliases for common use cases
+        static let cardPaddingVertical: CGFloat = md      // 8
+        static let cardPaddingHorizontal: CGFloat = lg    // 10
+        static let rowPaddingVertical: CGFloat = xs       // 4
+        static let rowPaddingHorizontal: CGFloat = sm     // 6
+        static let itemSpacing: CGFloat = xs              // 4
+        static let sectionSpacing: CGFloat = xl           // 12
+        static let formFieldSpacing: CGFloat = md         // 8
+    }
+
+    struct CornerRadius {
+        // Base scale
+        static let xs: CGFloat = 4
+        static let sm: CGFloat = 5
+        static let md: CGFloat = 6
+        static let lg: CGFloat = 8
+        static let xl: CGFloat = 10
+
+        // Semantic aliases
+        static let card: CGFloat = sm           // 5
+        static let field: CGFloat = sm          // 5
+        static let button: CGFloat = xl         // 10
+        static let row: CGFloat = lg            // 8
+        static let timeLabel: CGFloat = xs      // 4
+    }
+
     struct Colors {
         static let accent = Color.accentColor
         static let activeTimer = Color.accentColor
@@ -164,6 +244,7 @@ struct AppTheme {
     struct Shadows {
         static let soft = Shadow(color: Color.black.opacity(AppTheme.Opacity.shadowResting), radius: 6, x: 0, y: 3)
         static let floating = Shadow(color: Color.black.opacity(AppTheme.Opacity.shadowFloating), radius: 10, x: 0, y: 5)
+        static let active = Shadow(color: Color.black.opacity(AppTheme.Opacity.shadowActive), radius: 8, x: 0, y: 4)
     }
 }
 

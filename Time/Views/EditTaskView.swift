@@ -50,15 +50,15 @@ struct EditTaskView: View {
     var body: some View {
         VStack(spacing: 0) {
             ViewThatFits {
-                VStack(spacing: 20) {
+                VStack(spacing: AppTheme.Spacing.xxxl) {
                     // Task Description
-                    VStack(alignment: .leading, spacing: 5) {
+                    VStack(alignment: .leading, spacing: AppTheme.Spacing.xs) {
                         HStack {
                             Label("DESCRIPTION", systemImage: "pencil.line")
                                 .appSectionHeader()
-                            
+
                             Spacer()
-                            
+
                             // Close button
                             Button {
                                 if hasUnsavedChanges {
@@ -75,34 +75,34 @@ struct EditTaskView: View {
 
                         TextField("What are you working on?", text: $taskDescription)
                             .textFieldStyle(.plain)
-                            .font(.system(size: 15))
-                            .appCardField(padding: 10, cornerRadius: 5)
+                            .font(.system(size: AppTheme.Typography.headline))
+                            .appCardField()
                             .onSubmit(saveChanges)
                     }
-                    
+
                     // Duration & Time Range
-                    VStack(alignment: .leading, spacing: 5) {
+                    VStack(alignment: .leading, spacing: AppTheme.Spacing.xs) {
                         Label("DURATION", systemImage: "clock")
                             .appSectionHeader()
-                        
+
                         TextField("0:00:00", text: $durationString)
                             .textFieldStyle(.plain)
-                            .font(.system(size: 20, weight: .medium, design: .monospaced))
+                            .font(AppTheme.Typography.durationDisplay())
                             .disabled(isActive)
-                            .appCardField(padding: 10, cornerRadius: 5, disabledStyle: isActive)
+                            .appCardField(disabledStyle: isActive)
                             .onChange(of: durationString) { _, newValue in
                                 updateTimesFromDuration()
                             }
                             .onSubmit(saveChanges)
-                        HStack(spacing: 10) {
+                        HStack(spacing: AppTheme.Spacing.lg) {
                             DatePicker("", selection: $startTime, displayedComponents: .hourAndMinute)
                                 .datePickerStyle(.stepperField)
                                 .frame(maxWidth: .infinity)
                                 .onChange(of: startTime) { _, _ in updateDurationFromTimes() }
-                                .appCardField(padding: 5, cornerRadius: 5, disabledStyle: isActive)
+                                .appCardField(padding: AppTheme.Spacing.xs, disabledStyle: isActive)
 
                             Image(systemName: "arrow.right")
-                                .font(.system(size: 13, weight: .bold))
+                                .font(.system(size: AppTheme.Typography.callout, weight: .bold))
                                 .foregroundColor(AppTheme.Colors.textSecondary.opacity(AppTheme.Opacity.secondaryTextMedium))
 
                             DatePicker("", selection: $endTime, displayedComponents: .hourAndMinute)
@@ -110,26 +110,26 @@ struct EditTaskView: View {
                                 .frame(maxWidth: .infinity)
                                 .disabled(isActive)
                                 .onChange(of: endTime) { _, _ in updateDurationFromTimes() }
-                                .appCardField(padding: 5, cornerRadius: 5, disabledStyle: isActive)
+                                .appCardField(padding: AppTheme.Spacing.xs, disabledStyle: isActive)
                         }
                         .onKeyPress(.return) {
                             saveChanges()
                             return .handled
                         }
                     }
-       
+
                     Toggle(isOn: $isActive) {
                         HStack {
                             Image(systemName: "timer")
                                 .foregroundColor(isActive ? AppTheme.Colors.accent : .secondary)
                             Text("Is active")
-                                .font(.system(size: 13, weight: .medium))
+                                .font(AppTheme.Typography.rowPrimaryText())
                         }
                     }
                     .toggleStyle(.switch)
                     .frame(maxWidth: .infinity, alignment: .leading)
                 }
-                .padding(10)
+                .padding(AppTheme.Spacing.lg)
             }
             
             Divider().opacity(AppTheme.Opacity.divider)
@@ -153,7 +153,7 @@ struct EditTaskView: View {
                 }
                 .buttonStyle(AppPrimaryButtonStyle())
             }
-            .padding(10)
+            .padding(AppTheme.Spacing.lg)
             .background(AppTheme.Colors.footerBackground)
         }
         .frame(width: 300)

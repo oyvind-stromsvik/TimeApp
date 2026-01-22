@@ -44,24 +44,24 @@ struct TimerControlsView: View {
                     } header: {
                         Text("ACTIVE TIMERS")
                             .appSectionHeader()
-                            .padding(.vertical, 8)
+                            .padding(.vertical, AppTheme.Spacing.md)
                     }
                 }
                 else {
-                    VStack(spacing: 16) {
+                    VStack(spacing: AppTheme.Spacing.xxl) {
                         Image(systemName: "timer")
-                            .font(.system(size: 40, weight: .ultraLight))
+                            .font(.system(size: AppTheme.Typography.largeTitle, weight: .ultraLight))
                             .foregroundStyle(AppTheme.Colors.textSecondary.opacity(AppTheme.Opacity.secondaryTextFaint))
 
 
                         Text("No Active Timers")
-                            .font(.system(size: 14, weight: .medium))
+                            .font(AppTheme.Typography.emptyStateTitle())
                             .foregroundStyle(.secondary)
                         Text("Start a new timer to begin tracking time.")
-                            .font(.system(size: 11))
+                            .font(AppTheme.Typography.rowSecondaryText())
                             .foregroundStyle(AppTheme.Colors.textSecondary.opacity(AppTheme.Opacity.secondaryTextStrong))
                             .multilineTextAlignment(.center)
-                            .padding(.horizontal, 40)
+                            .padding(.horizontal, AppTheme.Spacing.huge)
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
@@ -74,7 +74,7 @@ struct TimerControlsView: View {
                     } header: {
                         Text(tasksHeaderTitle)
                             .appSectionHeader()
-                            .padding(.vertical, 8)
+                            .padding(.vertical, AppTheme.Spacing.md)
                     }
                 }
             }
@@ -99,13 +99,13 @@ struct ActiveTimerRow: View {
 
     var body: some View {
         let _ = manager.lastTick
-        HStack(spacing: 12) {
-            VStack(alignment: .leading, spacing: 4) {
+        HStack(spacing: AppTheme.Spacing.xl) {
+            VStack(alignment: .leading, spacing: AppTheme.Spacing.itemSpacing) {
                 Text(task.taskDescription)
-                    .font(.system(size: 13, weight: .medium))
+                    .font(AppTheme.Typography.rowPrimaryText())
                     .foregroundStyle(AppTheme.Colors.textPrimary)
 
-                HStack(spacing: 6) {
+                HStack(spacing: AppTheme.Spacing.sm) {
                     Circle()
                         .fill(AppTheme.Colors.activeTimer)
                         .frame(width: 6, height: 6)
@@ -113,7 +113,7 @@ struct ActiveTimerRow: View {
                         .offset(x: 1)
 
                     Text(task.formattedDuration)
-                        .font(.system(size: 11, weight: .medium, design: .monospaced))
+                        .font(.system(size: AppTheme.Typography.body, weight: .medium, design: .monospaced))
                         .foregroundColor(AppTheme.Colors.activeTimer)
                         .symbolEffect(.pulse)
                 }
@@ -136,14 +136,7 @@ struct ActiveTimerRow: View {
             }
             .buttonStyle(.plain)
         }
-        .padding(.vertical, 4)
-        .padding(.horizontal, 6)
-        .contentShape(RoundedRectangle(cornerRadius: 8))
-        .background(
-            RoundedRectangle(cornerRadius: 8)
-                .fill(isHovering ? AppTheme.Colors.tertiaryFill : .clear)
-        )
-        .animation(AppTheme.Animation.standard, value: isHovering)
+        .taskRowStyle(isHovering: isHovering)
         .onTapGesture {
             manager.openPopover(for: task, from: .sidebar(taskID: task.id))
             manager.selectTask(task)
@@ -188,23 +181,23 @@ struct CompletedTaskRow: View {
     }
 
     var body: some View {
-        HStack(spacing: 12) {
-            VStack(alignment: .leading, spacing: 4) {
+        HStack(spacing: AppTheme.Spacing.xl) {
+            VStack(alignment: .leading, spacing: AppTheme.Spacing.itemSpacing) {
                 Text(task.taskDescription)
-                    .font(.system(size: 13, weight: .medium))
+                    .font(AppTheme.Typography.rowPrimaryText())
                     .foregroundStyle(AppTheme.Colors.textPrimary)
 
-                HStack(spacing: 6) {
+                HStack(spacing: AppTheme.Spacing.sm) {
                     Text(timeRange)
-                        .font(.system(size: 11, weight: .regular, design: .monospaced))
+                        .font(.system(size: AppTheme.Typography.body, weight: .regular, design: .monospaced))
                         .foregroundColor(AppTheme.Colors.textSecondary)
 
                     Text("•")
-                        .font(.system(size: 11))
+                        .font(.system(size: AppTheme.Typography.body))
                         .foregroundColor(AppTheme.Colors.textSecondary)
 
                     Text(task.formattedDuration)
-                        .font(.system(size: 11, weight: .medium, design: .monospaced))
+                        .font(.system(size: AppTheme.Typography.body, weight: .medium, design: .monospaced))
                         .foregroundColor(AppTheme.Colors.textSecondary)
                 }
             }
@@ -233,14 +226,7 @@ struct CompletedTaskRow: View {
                 .transition(.scale.combined(with: .opacity))
             }
         }
-        .padding(.vertical, 4)
-        .padding(.horizontal, 6)
-        .contentShape(RoundedRectangle(cornerRadius: 8))
-        .background(
-            RoundedRectangle(cornerRadius: 8)
-                .fill(isHovering ? AppTheme.Colors.tertiaryFill : .clear)
-        )
-        .animation(AppTheme.Animation.standard, value: isHovering)
+        .taskRowStyle(isHovering: isHovering)
         .onTapGesture {
             manager.openPopover(for: task, from: .sidebar(taskID: task.id))
             manager.selectTask(task)
