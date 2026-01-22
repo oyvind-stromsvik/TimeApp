@@ -36,8 +36,13 @@ class AppManager: NSObject, UNUserNotificationCenterDelegate {
     // UI binding for aggressive alert
     var showAggressiveAlert: Bool = false
     
-    // UI binding for sidebar visibility
+    // UI binding for sidebar visibility and width
     var isSidebarVisible: Bool = true
+    var sidebarWidth: CGFloat {
+        didSet {
+            userDefaults.set(sidebarWidth, forKey: "sidebarWidth")
+        }
+    }
 
     // MARK: - Centralized Selection State
     var selectedTask: Task?
@@ -75,14 +80,21 @@ class AppManager: NSObject, UNUserNotificationCenterDelegate {
         self.timerService = timerService
         self.systemService = systemService
         self.userDefaults = userDefaults
-        super.init()
-        
+
         // Register default settings if not set
         userDefaults.register(defaults: [
              "idleThreshold": 300.0,
              "aggressiveThreshold": 60.0,
-             "enableAggressiveAlerts": true
+             "enableAggressiveAlerts": true,
+             "sidebarWidth": AppTheme.sidebarDefaultWidth
         ])
+
+        // Load persisted sidebar width
+        self.sidebarWidth = userDefaults.double(forKey: "sidebarWidth") > 0
+            ? userDefaults.double(forKey: "sidebarWidth")
+            : AppTheme.sidebarDefaultWidth
+
+        super.init()
         
         requestNotificationPermission()
         UNUserNotificationCenter.current().delegate = self

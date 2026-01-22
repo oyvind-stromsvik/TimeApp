@@ -10,18 +10,26 @@ struct ContentView: View {
         @Bindable var bindableManager = manager
         
         HStack(spacing: 0) {
-            if manager.isSidebarVisible {
+            SidebarContainer(
+                isVisible: Binding(
+                    get: { manager.isSidebarVisible },
+                    set: { manager.isSidebarVisible = $0 }
+                ),
+                width: Binding(
+                    get: { manager.sidebarWidth },
+                    set: { manager.sidebarWidth = $0 }
+                )
+            ) {
                 TimerControlsView()
-                    .frame(width: AppTheme.sidebarWidth)
                     .background(.regularMaterial)
-                    .transition(.move(edge: .leading))
-                
-                Divider()
             }
+            
+            Divider()
             
             DayView(date: selectedDate, onDateChange: { selectedDate = $0 })
                 .frame(minWidth: 100, idealWidth: AppTheme.mainWidth, maxWidth: .infinity)
         }
+        .coordinateSpace(name: "contentArea")
         .toolbar {
             ToolbarItem(placement: .navigation) {
                 Button {
@@ -39,6 +47,91 @@ struct ContentView: View {
         } message: {
             Text("You have no active timers running.")
         }
+    }
+}
+
+// MARK: - Sidebar Container with Resize
+
+private struct SidebarContainer<Content: View>: View {
+    @Binding var isVisible: Bool
+    @Binding var width: CGFloat
+    @ViewBuilder let content: Content
+
+    @GestureState private var dragState: DragState = .inactive
+
+    private enum DragState {
+        case inactive
+        case dragging(width: CGFloat, collapsed: Bool)
+
+        var isDragging: Bool {
+            if case .dragging = self { return true }
+            return false
+        }
+
+        var isCollapsed: Bool {
+            if case .dragging(_, let collapsed) = self { return collapsed }
+            return false
+        }
+
+        var width: CGFloat? {
+            if case .dragging(let w, _) = self { return w }
+            return nil
+        }
+    }
+
+    private var effectiveWidth: CGFloat {
+        dragState.width ?? width
+    }
+
+    private var displayWidth: CGFloat {
+        if dragState.isDragging && dragState.isCollapsed {
+            return 0
+        }
+        return effectiveWidth
+    }
+
+    var body: some View {
+        Group {
+            if isVisible || dragState.isDragging {
+                content
+                    .frame(width: displayWidth)
+                    .clipped()
+                    .overlay(alignment: .trailing) {
+                        resizeHandle
+                    }
+            }
+        }
+    }
+
+    private var resizeHandle: some View {
+        Color.clear
+            .frame(width: 8)
+            .contentShape(Rectangle())
+            .offset(x: 4)
+            .onHover { hovering in
+                if hovering {
+                    NSCursor.resizeLeftRight.push()
+                } else {
+                    NSCursor.pop()
+                }
+            }
+            .gesture(
+                DragGesture(minimumDistance: 1, coordinateSpace: .named("contentArea"))
+                    .updating($dragState) { value, state, _ in
+                        let newWidth = value.location.x
+                        let collapsed = newWidth < AppTheme.sidebarCollapseThreshold
+                        let clampedWidth = min(max(newWidth, AppTheme.sidebarMinWidth), AppTheme.sidebarMaxWidth)
+                        state = .dragging(width: clampedWidth, collapsed: collapsed)
+                    }
+                    .onEnded { value in
+                        let finalWidth = value.location.x
+                        if finalWidth < AppTheme.sidebarCollapseThreshold {
+                            isVisible = false
+                        } else {
+                            width = min(max(finalWidth, AppTheme.sidebarMinWidth), AppTheme.sidebarMaxWidth)
+                        }
+                    }
+            )
     }
 }
 

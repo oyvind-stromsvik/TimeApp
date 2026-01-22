@@ -2,8 +2,13 @@ import SwiftUI
 
 struct AppTheme {
     static let cardCornerRadius: CGFloat = 5
-    static let sidebarWidth: CGFloat = 280
     static let mainWidth: CGFloat = 280
+
+    // Sidebar sizing
+    static let sidebarDefaultWidth: CGFloat = 280
+    static let sidebarMinWidth: CGFloat = 200
+    static let sidebarMaxWidth: CGFloat = 500
+    static let sidebarCollapseThreshold: CGFloat = 100
 
     struct Opacity {
         static let verySubtleBackground: Double = 0.02
