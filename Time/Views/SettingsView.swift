@@ -8,7 +8,7 @@ struct SettingsView: View {
     var body: some View {
         Form {
             Section("Idle Detection") {
-                Text("App will notify you if you are idle while a timer is running.")
+                Text("App will notify you if you are idle while a task is running.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                 
@@ -19,7 +19,7 @@ struct SettingsView: View {
                 Toggle("Enable Aggressive Alerts", isOn: $enableAggressiveAlerts)
                 
                 if enableAggressiveAlerts {
-                    Text("App will annoy you if no timer is running.")
+                    Text("App will annoy you if no task is running.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                     

@@ -14,14 +14,14 @@ A beautiful, native macOS time tracking application built with Swift and SwiftUI
     - Beautiful, native macOS UI that feels right at home on macOS.
 
 - **Interactive Time Tracking**:
-    - **Multiple Timers**: Start and run as many timers as needed simultaneously.
+    - **Multiple Tasks**: Start and run as many tasks as needed simultaneously.
     - **Overlapping Entries**: Support for parallel tasks, displayed side-by-side in the day view.
     - **Quick Add**: Click anywhere in the day view to instantly create or edit a time entry.
 
 - **Seamless Editing & Organization**:
     - **Drag & Drop**: Intuitively drag and drop time entries to change their start and end times.
     - **Resizeable Blocks**: Grab the top or bottom edge of any entry to stretch or shrink its duration.
-    - **Selection & Management**: Select entries to edit description, start time, end time, duration, delete them, or restart a timer for an existing task.
+    - **Selection & Management**: Select entries to edit description, start time, end time, duration, delete them, or restart a task for an existing task.
 
 ## 🛠 Tech Stack
 
@@ -59,7 +59,7 @@ Requires Xcode 16+ and macOS 14.0+.
   - Timer lifecycle (1-second tick updates)
   - Undo/redo with NSUndoManager and TaskSnapshot pattern
   - System idle detection via CoreGraphics
-  - Idle notifications (5-min threshold while tracking, 60-sec if no active timer)
+  - Idle notifications (5-min threshold while tracking, 60-sec if no active task)
 
 - **Task.swift** - SwiftData model representing a time entry with title, start/end times, color, and optional notes.
 
@@ -69,7 +69,7 @@ Requires Xcode 16+ and macOS 14.0+.
 
 ```
 ContentView (NavigationSplitView)
-├── TimerControlsView (sidebar - active timers list)
+├── SidebarView (sidebar - active tasks list)
 └── DayView (detail - 24-hour scrollable timeline)
     ├── TimelineGrid (background grid)
     ├── CurrentTimeIndicator (red "now" line)

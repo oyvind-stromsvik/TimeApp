@@ -6,7 +6,7 @@ struct ContentView: View {
     @Environment(AppManager.self) private var manager
     @Environment(\.undoManager) private var undoManager
     @State private var selectedDate = Date()
-    @State private var newTimerDescription = ""
+    @State private var newTaskDescription = ""
     @State private var hourHeight: CGFloat = AppTheme.Timeline.defaultHourHeight
 
     var body: some View {
@@ -97,7 +97,7 @@ struct ContentView: View {
                         set: { manager.sidebarWidth = $0 }
                     )
                 ) {
-                    TimerControlsView(selectedDate: selectedDate)
+                    SidebarView(selectedDate: selectedDate)
                         .background(.regularMaterial)
                 }
 
@@ -122,13 +122,13 @@ struct ContentView: View {
 
             ToolbarItem(placement: .principal) {
                 HStack(spacing: AppTheme.Spacing.md) {
-                    TextField("What are you working on?", text: $newTimerDescription)
+                    TextField("What are you working on?", text: $newTaskDescription)
                         .textFieldStyle(.plain)
                         .appCardField(padding: AppTheme.Spacing.md, cornerRadius: AppTheme.CornerRadius.md)
                         .frame(width: 300)
-                        .onSubmit(startTimer)
+                        .onSubmit(startTask)
 
-                    Button(action: startTimer) {
+                    Button(action: startTask) {
                         AppCircleIcon(
                             systemName: "play.fill",
                             size: 28,
@@ -143,14 +143,14 @@ struct ContentView: View {
         .alert("Time to Track!", isPresented: $bindableManager.showAggressiveAlert) {
             Button("OK", role: .cancel) { }
         } message: {
-            Text("You have no active timers running.")
+            Text("You have no active tasks running.")
         }
     }
 
-    private func startTimer() {
-        let description = newTimerDescription.isEmpty ? "New task" : newTimerDescription
+    private func startTask() {
+        let description = newTaskDescription.isEmpty ? "New task" : newTaskDescription
         manager.addNewTask(description: description, startTime: Date(), endTime: nil, isActive: true, undoManager: undoManager)
-        newTimerDescription = ""
+        newTaskDescription = ""
     }
 
     private func previousDay(from date: Date) -> Date {

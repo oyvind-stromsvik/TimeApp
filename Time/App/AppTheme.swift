@@ -152,8 +152,8 @@ struct AppTheme {
 
     struct Colors {
         static let accent = Color.accentColor
-        static let activeTimer = Color.accentColor
-        static let completedTimer = Color(nsColor: .secondaryLabelColor).opacity(0.9)
+        static let activeTask = Color.accentColor
+        static let completedTask = Color(nsColor: .secondaryLabelColor).opacity(0.9)
 
         static let destructive = Color(nsColor: .systemRed)
         static let nowIndicator = Color(nsColor: .systemRed)
@@ -189,8 +189,6 @@ struct AppTheme {
         static var textSecondary: Color {
             Color(NSColor.secondaryLabelColor)
         }
-        
-        static let timerPulse = Color.blue.opacity(0.5)
 
         static let pastelPalette: [NSColor] = [
             NSColor(red: 0.92, green: 0.75, blue: 0.75, alpha: 1.0), // Muted Rose

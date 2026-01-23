@@ -21,7 +21,7 @@ struct TaskBlock: View {
 
     var body: some View {
         let tick = task.isActive ? manager.lastTick : .distantPast
-        let tintColor = task.isActive ? AppTheme.Colors.activeTimer : AppTheme.Colors.taskBaseColor(task: task)
+        let tintColor = task.isActive ? AppTheme.Colors.activeTask : AppTheme.Colors.taskBaseColor(task: task)
         let isSelected = task.id == manager.selectedTask?.id
         let isInteracting = isDragging || isResizing
 
@@ -239,7 +239,7 @@ struct TaskContent: View {
                 Text(formattedDuration)
                     .font(.system(size: AppTheme.Typography.caption2, weight: .medium))
                     .monospacedDigit()
-                    .foregroundStyle(task.isActive ? AppTheme.Colors.activeTimer : .secondary)
+                    .foregroundStyle(task.isActive ? AppTheme.Colors.activeTask : .secondary)
             }
 
             Spacer()
@@ -247,7 +247,7 @@ struct TaskContent: View {
             if task.isActive {
                 Image(systemName: "timer")
                     .font(.system(size: AppTheme.Typography.body, weight: .semibold))
-                    .foregroundColor(AppTheme.Colors.activeTimer)
+                    .foregroundColor(AppTheme.Colors.activeTask)
                     .symbolEffect(.pulse)
             }
         }

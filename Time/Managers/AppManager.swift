@@ -30,7 +30,7 @@ class AppManager: NSObject, UNUserNotificationCenterDelegate {
         userDefaults.bool(forKey: "enableAggressiveAlerts")
     }
     
-    // This property is just to trigger UI updates for active timers
+    // This property is just to trigger UI updates for active tasks
     var lastTick: Date = Date()
 
     // UI binding for aggressive alert
@@ -141,7 +141,7 @@ class AppManager: NSObject, UNUserNotificationCenterDelegate {
      so we want to be as annoying as possible in that regard.
      */
     private func checkIdleStatus() {
-        // Case 1: No active timer -> Aggressively alert
+        // Case 1: No active task -> Aggressively alert
         if activeTasks.isEmpty {
             guard isAggressiveAlertEnabled else { return }
             
@@ -153,7 +153,7 @@ class AppManager: NSObject, UNUserNotificationCenterDelegate {
             showAggressiveAlert = true
             lastAggressiveAlert = Date()
         }
-        // Case 2: Active timer -> Check for idle
+        // Case 2: Active task -> Check for idle
         else {
             guard let idleTime = systemService.getIdleTime() else { return }
             
@@ -170,7 +170,7 @@ class AppManager: NSObject, UNUserNotificationCenterDelegate {
     private func sendIdleNotification() {
         let content = UNMutableNotificationContent()
         content.title = "Are you working?"
-        content.body = "You've been idle for a while with no active timer. Click here to start tracking."
+        content.body = "You've been idle for a while with no active task. Click here to start tracking."
         content.sound = .default
         
         let request = UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: nil)
@@ -329,7 +329,7 @@ class AppManager: NSObject, UNUserNotificationCenterDelegate {
         save()
     }
 
-    func stopTimer(_ task: Task, undoManager: UndoManager? = nil) {
+    func stopTask(_ task: Task, undoManager: UndoManager? = nil) {
         let before = TaskSnapshot(task)
         task.stop()
         save()
@@ -338,9 +338,9 @@ class AppManager: NSObject, UNUserNotificationCenterDelegate {
         let after = TaskSnapshot(task)
         if before != after {
             undoManager?.registerUndo(withTarget: self) { target in
-                target.apply(snapshot: before, undoManager: undoManager, actionName: "Stop Timer")
+                target.apply(snapshot: before, undoManager: undoManager, actionName: "Stop Task")
             }
-            undoManager?.setActionName("Stop Timer")
+            undoManager?.setActionName("Stop Task")
         }
     }
 

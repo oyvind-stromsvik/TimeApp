@@ -1,7 +1,7 @@
 import SwiftUI
 import SwiftData
 
-struct TimerControlsView: View {
+struct SidebarView: View {
     let selectedDate: Date
 
     @Environment(\.modelContext) private var modelContext
@@ -43,10 +43,10 @@ struct TimerControlsView: View {
                 if !activeTasks.isEmpty {
                     Section {
                         ForEach(activeTasks) { task in
-                            ActiveTimerRow(task: task)
+                            ActiveTaskRow(task: task)
                         }
                     } header: {
-                        Text("ACTIVE TIMERS")
+                        Text("ACTIVE TASKS")
                             .appSectionHeader()
                             .padding(.vertical, AppTheme.Spacing.md)
                     }
@@ -58,10 +58,10 @@ struct TimerControlsView: View {
                             .foregroundStyle(AppTheme.Colors.textSecondary.opacity(AppTheme.Opacity.secondaryTextFaint))
 
 
-                        Text("No Active Timers")
+                        Text("No Active Tasks")
                             .font(AppTheme.Typography.emptyStateTitle())
                             .foregroundStyle(.secondary)
-                        Text("Start a new timer to begin tracking time.")
+                        Text("Start a new task to begin tracking time.")
                             .font(AppTheme.Typography.rowSecondaryText())
                             .foregroundStyle(AppTheme.Colors.textSecondary.opacity(AppTheme.Opacity.secondaryTextStrong))
                             .multilineTextAlignment(.center)
@@ -94,8 +94,8 @@ struct TimerControlsView: View {
     }
 }
 
-/// An active task/timer in the sidebar.
-struct ActiveTimerRow: View {
+/// An active task in the sidebar.
+struct ActiveTaskRow: View {
     @Bindable var task: Task
 
     @Environment(AppManager.self) private var manager
@@ -116,14 +116,14 @@ struct ActiveTimerRow: View {
 
                 HStack(spacing: AppTheme.Spacing.sm) {
                     Circle()
-                        .fill(AppTheme.Colors.activeTimer)
+                        .fill(AppTheme.Colors.activeTask)
                         .frame(width: 6, height: 6)
                         .symbolEffect(.pulse, value: manager.lastTick)
                         .offset(x: 1)
 
                     Text(task.formattedDuration)
                         .font(.system(size: AppTheme.Typography.body, weight: .medium, design: .monospaced))
-                        .foregroundColor(AppTheme.Colors.activeTimer)
+                        .foregroundColor(AppTheme.Colors.activeTask)
                         .symbolEffect(.pulse)
                 }
             }
@@ -132,7 +132,7 @@ struct ActiveTimerRow: View {
 
             Button {
                 withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                    manager.stopTimer(task, undoManager: undoManager)
+                    manager.stopTask(task, undoManager: undoManager)
                 }
             } label: {
                 AppCircleIcon(
@@ -148,17 +148,24 @@ struct ActiveTimerRow: View {
         .padding(.vertical, AppTheme.Spacing.md)
         .padding(.horizontal, AppTheme.Spacing.lg)
         .background(
-            RoundedRectangle(cornerRadius: AppTheme.CornerRadius.card)
-                .fill(AppTheme.Colors.cardBackground)
-                .overlay(
-                    RoundedRectangle(cornerRadius: AppTheme.CornerRadius.card)
-                        .strokeBorder(AppTheme.Colors.separator.opacity(0.5), lineWidth: 0.5)
-                )
-                .appShadow(AppTheme.Shadows.soft)
-                .overlay(
-                    RoundedRectangle(cornerRadius: AppTheme.CornerRadius.card)
-                        .fill(isHovering ? AppTheme.Colors.tertiaryFill : .clear)
-                )
+            ZStack {
+                // Base card background
+                RoundedRectangle(cornerRadius: AppTheme.CornerRadius.card)
+                    .fill(AppTheme.Colors.cardBackground)
+
+                // Subtle accent tint to highlight active state
+                RoundedRectangle(cornerRadius: AppTheme.CornerRadius.card)
+                    .fill(AppTheme.Colors.accent.opacity(0.03))
+
+                // Hover effect
+                RoundedRectangle(cornerRadius: AppTheme.CornerRadius.card)
+                    .fill(isHovering ? AppTheme.Colors.tertiaryFill : .clear)
+            }
+            .overlay(
+                RoundedRectangle(cornerRadius: AppTheme.CornerRadius.card)
+                    .strokeBorder(AppTheme.Colors.accent.opacity(0.25), lineWidth: 1)
+            )
+            .appShadow(AppTheme.Shadows.active)
         )
         .animation(AppTheme.Animation.standard, value: isHovering)
         .onTapGesture {
@@ -434,7 +441,7 @@ struct CompletedTaskRow: View {
     let task2 = Task(taskDescription: "Working on UI Previews", startTime: start2, isActive: true)
     container.mainContext.insert(task2)
     
-    return TimerControlsView(selectedDate: today)
+    return SidebarView(selectedDate: today)
         .modelContainer(container)
         .environment(manager)
 }
