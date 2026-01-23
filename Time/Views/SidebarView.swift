@@ -232,6 +232,7 @@ struct TaskStackView: View {
                     }
                     .frame(width: 24, height: 24)
                     .contentShape(Rectangle())
+                    .cursor(.pointingHand)
                 }
                 .buttonStyle(.plain)
                 .onHover { hovering in
@@ -239,7 +240,6 @@ struct TaskStackView: View {
                         isArrowHovering = hovering
                     }
                 }
-                .cursor(.pointingHand)
 
                 VStack(alignment: .leading, spacing: AppTheme.Spacing.itemSpacing) {
                     HStack {

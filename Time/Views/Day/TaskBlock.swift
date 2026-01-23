@@ -33,6 +33,7 @@ struct TaskBlock: View {
         .frame(minWidth: 0, maxWidth: .infinity, minHeight: 0, maxHeight: .infinity, alignment: .topLeading)
         .clipped()
         .contentShape(Rectangle())
+        .cursor((isHovering && !isInteracting) ? .pointingHand : .arrow)
         .simultaneousGesture(
             TapGesture()
                 .onEnded {
@@ -91,7 +92,6 @@ struct TaskBlock: View {
             Button("Delete", role: .destructive) { manager.deleteTask(task, undoManager: undoManager) }
         }
         .onHover { hovering in isHovering = hovering }
-        .cursor((isHovering && !isInteracting) ? .pointingHand : .arrow)
         .simultaneousGesture(
             DragGesture(minimumDistance: 4, coordinateSpace: .named("timeline"))
                 .onChanged { value in
