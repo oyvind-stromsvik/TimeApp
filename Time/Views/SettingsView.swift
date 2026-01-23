@@ -2,17 +2,22 @@ import SwiftUI
 
 struct SettingsView: View {
     @AppStorage("idleThreshold") private var idleThreshold: Double = 300
+    @AppStorage("enableIdleDetection") private var enableIdleDetection: Bool = true
     @AppStorage("aggressiveThreshold") private var aggressiveThreshold: Double = 60
     @AppStorage("enableAggressiveAlerts") private var enableAggressiveAlerts: Bool = true
     
     var body: some View {
         Form {
             Section("Idle Detection") {
-                Text("App will notify you if you are idle while a task is running.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                Toggle("Enable Idle Detection", isOn: $enableIdleDetection)
                 
-                Stepper("Idle Threshold: \(Int(idleThreshold / 60)) min", value: $idleThreshold, in: 60...3600, step: 60)
+                if enableIdleDetection {
+                    Text("App will notify you if you are idle while a task is running.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    
+                    Stepper("Idle Threshold: \(Int(idleThreshold / 60)) min", value: $idleThreshold, in: 60...3600, step: 60)
+                }
             }
             
             Section("Aggressive Alerts") {

@@ -29,6 +29,10 @@ class AppManager: NSObject, UNUserNotificationCenterDelegate {
     private var isAggressiveAlertEnabled: Bool {
         userDefaults.bool(forKey: "enableAggressiveAlerts")
     }
+
+    private var isIdleDetectionEnabled: Bool {
+        userDefaults.bool(forKey: "enableIdleDetection")
+    }
     
     // This property is just to trigger UI updates for active tasks
     var lastTick: Date = Date()
@@ -86,6 +90,7 @@ class AppManager: NSObject, UNUserNotificationCenterDelegate {
              "idleThreshold": 300.0,
              "aggressiveThreshold": 60.0,
              "enableAggressiveAlerts": true,
+             "enableIdleDetection": true,
              "sidebarWidth": AppTheme.sidebarDefaultWidth
         ])
 
@@ -155,6 +160,7 @@ class AppManager: NSObject, UNUserNotificationCenterDelegate {
         }
         // Case 2: Active task -> Check for idle
         else {
+            guard isIdleDetectionEnabled else { return }
             guard let idleTime = systemService.getIdleTime() else { return }
             
             if idleTime < idleThreshold || Date().timeIntervalSince(lastIdleAlert) < idleThreshold {
