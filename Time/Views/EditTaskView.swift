@@ -15,6 +15,7 @@ struct EditTaskView: View {
     @State private var isActive: Bool
     @State private var durationString: String = ""
     @State private var showingDiscardAlert = false
+    @State private var previousEndTime: Date?
 
     private let originalDescription: String
     private let originalStartTime: Date
@@ -171,10 +172,42 @@ struct EditTaskView: View {
         } message: {
             Text("You have unsaved changes. Would you like to save or discard them?")
         }
-        .onChange(of: taskDescription) { manager.hasUnsavedChanges = hasUnsavedChanges }
-        .onChange(of: startTime) { manager.hasUnsavedChanges = hasUnsavedChanges }
-        .onChange(of: endTime) { manager.hasUnsavedChanges = hasUnsavedChanges }
-        .onChange(of: isActive) { manager.hasUnsavedChanges = hasUnsavedChanges }
+        .onChange(of: taskDescription) {
+            manager.hasUnsavedChanges = hasUnsavedChanges
+            updatePreview()
+        }
+        .onChange(of: startTime) {
+            manager.hasUnsavedChanges = hasUnsavedChanges
+            updatePreview()
+        }
+        .onChange(of: endTime) {
+            manager.hasUnsavedChanges = hasUnsavedChanges
+            updatePreview()
+        }
+        .onChange(of: isActive) { _, newValue in
+            if newValue {
+                // Task is becoming active
+                previousEndTime = endTime // Save current end time
+                endTime = Date()
+                updateDurationFromTimes()
+            } else {
+                // Task is becoming inactive
+                if let prev = previousEndTime {
+                    endTime = prev // Restore previous end time
+                    updateDurationFromTimes() // Update duration to reflect restored end time
+                } else if originalIsActive == false {
+                    // Fallback to original end time if we don't have a previous one
+                    // (e.g. if we started editing a non-active task)
+                   endTime = originalEndTime
+                   updateDurationFromTimes()
+                }
+            }
+            manager.hasUnsavedChanges = hasUnsavedChanges
+            updatePreview()
+        }
+        .onDisappear {
+            clearPreview()
+        }
     }
     
     private func updateDurationFromTimes() {
@@ -182,6 +215,20 @@ struct EditTaskView: View {
         durationString = Task.formatDuration(duration)
     }
     
+    private func updatePreview() {
+        manager.previewTaskState = AppManager.TaskSnapshot(
+            id: task.id,
+            taskDescription: taskDescription,
+            startTime: startTime,
+            endTime: isActive ? nil : endTime,
+            isActive: isActive
+        )
+    }
+
+    private func clearPreview() {
+        manager.previewTaskState = nil
+    }
+
     private func updateTimesFromDuration() {
         let components = durationString.split(separator: ":").compactMap { Double($0) }
         var totalSeconds: TimeInterval = 0

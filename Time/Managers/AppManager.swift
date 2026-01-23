@@ -183,7 +183,9 @@ class AppManager: NSObject, UNUserNotificationCenterDelegate {
         UNUserNotificationCenter.current().add(request)
     }
     
-    fileprivate struct TaskSnapshot: Equatable {
+    var previewTaskState: TaskSnapshot?
+
+    struct TaskSnapshot: Equatable {
         let id: UUID
         let taskDescription: String
         let startTime: Date
@@ -223,6 +225,13 @@ class AppManager: NSObject, UNUserNotificationCenterDelegate {
         return (try? modelContext.fetch(descriptor))?.first
     }
     
+    func resolveParams(for task: Task) -> (startTime: Date, endTime: Date?, isActive: Bool) {
+        if let preview = previewTaskState, preview.id == task.id {
+            return (preview.startTime, preview.endTime, preview.isActive)
+        }
+        return (task.startTime, task.endTime, task.isActive)
+    }
+
     var activeTasks: [Task] {
         let descriptor = FetchDescriptor<Task>(predicate: #Predicate { $0.isActive })
         return (try? modelContext.fetch(descriptor)) ?? []

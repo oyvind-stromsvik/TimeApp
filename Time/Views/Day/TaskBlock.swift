@@ -20,8 +20,9 @@ struct TaskBlock: View {
     }
 
     var body: some View {
-        let tick = task.isActive ? manager.lastTick : .distantPast
-        let tintColor = task.isActive ? AppTheme.Colors.activeTask : AppTheme.Colors.taskBaseColor(task: task)
+        let params = manager.resolveParams(for: task)
+        let tick = params.isActive ? manager.lastTick : .distantPast
+        let tintColor = params.isActive ? AppTheme.Colors.activeTask : AppTheme.Colors.taskBaseColor(task: task)
         let isSelected = task.id == manager.selectedTask?.id
         let isInteracting = isDragging || isResizing
 
@@ -217,12 +218,19 @@ struct TaskContent: View {
     let task: Task
     let tick: Date
 
+    @Environment(AppManager.self) private var manager
+
     private var formattedDuration: String {
+        let params = manager.resolveParams(for: task)
         let duration: TimeInterval
-        if task.isActive {
-            duration = tick.timeIntervalSince(task.startTime)
+        if params.isActive {
+            duration = tick.timeIntervalSince(params.startTime)
         } else {
-            duration = task.duration
+            if let end = params.endTime {
+                duration = end.timeIntervalSince(params.startTime)
+            } else {
+                duration = task.duration
+            }
         }
         return Task.formatDuration(duration)
     }
@@ -244,7 +252,8 @@ struct TaskContent: View {
 
             Spacer()
 
-            if task.isActive {
+            let params = manager.resolveParams(for: task)
+            if params.isActive {
                 Image(systemName: "timer")
                     .font(.system(size: AppTheme.Typography.body, weight: .semibold))
                     .foregroundColor(AppTheme.Colors.activeTask)
