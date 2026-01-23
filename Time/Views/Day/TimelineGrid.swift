@@ -2,9 +2,11 @@ import SwiftUI
 
 struct TimelineGrid: View {
     let hourHeight: CGFloat
+    var topOffset: CGFloat = 0
 
     var body: some View {
         VStack(spacing: 0) {
+            Color.clear.frame(height: topOffset)
             ForEach(0..<AppTheme.Timeline.hoursPerDay, id: \.self) { hour in
                 HStack(alignment: .top, spacing: 0) {
                     Text(String(format: "%02d:00", hour))

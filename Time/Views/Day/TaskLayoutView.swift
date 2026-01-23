@@ -4,6 +4,7 @@ struct TaskLayoutView: View {
     let tasks: [Task]
     let hourHeight: CGFloat
     let date: Date
+    var topOffset: CGFloat = 0
 
     @Environment(AppManager.self) private var manager
 
@@ -41,7 +42,7 @@ struct TaskLayoutView: View {
         let calendar = Calendar.current
         let startOfDay = calendar.startOfDay(for: date)
         let diff = task.startTime.timeIntervalSince(startOfDay)
-        return CGFloat(diff / 3600.0) * hourHeight
+        return (CGFloat(diff / 3600.0) * hourHeight) + topOffset
     }
 
     private func calculateHeight(for task: Task, at tick: Date) -> CGFloat {

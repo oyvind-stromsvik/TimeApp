@@ -42,7 +42,7 @@ struct DayView: View {
             ScrollView {
                 ZStack(alignment: .topLeading) {
                     // Background Grid
-                    TimelineGrid(hourHeight: hourHeight)
+                    TimelineGrid(hourHeight: hourHeight, topOffset: hourHeight)
                         .contentShape(Rectangle())
                         .onTapGesture { location in
                             print("Timeline view tapped")
@@ -59,12 +59,13 @@ struct DayView: View {
                     TaskLayoutView(
                         tasks: filteredTasks,
                         hourHeight: hourHeight,
-                        date: date
+                        date: date,
+                        topOffset: hourHeight
                     )
 
                     // Current Time Indicator
                     if Calendar.current.isDateInToday(date) {
-                        CurrentTimeIndicator(hourHeight: hourHeight)
+                        CurrentTimeIndicator(hourHeight: hourHeight, topOffset: hourHeight)
                     }
                 }
                 .coordinateSpace(name: "timeline")
@@ -111,7 +112,8 @@ struct DayView: View {
     
     private func createTaskAtPosition(location: CGPoint) {
         print("create task at \(location)")
-        let hour = location.y / hourHeight
+        // Subtract hourHeight because we added it as top padding
+        let hour = (location.y - hourHeight) / hourHeight
         let calendar = Calendar.current
         var components = calendar.dateComponents([.year, .month, .day], from: date)
         components.hour = Int(hour)
