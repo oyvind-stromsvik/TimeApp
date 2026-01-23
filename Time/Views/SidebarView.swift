@@ -207,6 +207,7 @@ struct TaskStackView: View {
     @Environment(\.undoManager) private var undoManager
     @State private var isExpanded = false
     @State private var isHovering = false
+    @State private var isArrowHovering = false
 
     private var totalDuration: TimeInterval {
         tasks.reduce(0) { $0 + $1.duration }
@@ -220,12 +221,24 @@ struct TaskStackView: View {
                 Button {
                     isExpanded.toggle()
                 } label: {
-                    Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
-                        .font(.system(size: 9, weight: .semibold))
-                        .foregroundColor(AppTheme.Colors.textSecondary)
-                        .frame(width: 12, height: 12)
+                    ZStack {
+                        Circle()
+                            .fill(isArrowHovering ? AppTheme.Colors.tertiaryFill : Color.clear)
+                            .frame(width: 20, height: 20)
+                        
+                        Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
+                            .font(.system(size: 9, weight: .semibold))
+                            .foregroundColor(AppTheme.Colors.textSecondary)
+                    }
+                    .frame(width: 24, height: 24)
+                    .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
+                .onHover { hovering in
+                    withAnimation(.easeInOut(duration: 0.1)) {
+                        isArrowHovering = hovering
+                    }
+                }
                 .cursor(.pointingHand)
 
                 VStack(alignment: .leading, spacing: AppTheme.Spacing.itemSpacing) {
