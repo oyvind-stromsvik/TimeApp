@@ -19,8 +19,23 @@ struct SidebarView: View {
         }
     }
 
-    private var groupedTasks: [String: [Task]] {
-        Dictionary(grouping: selectedDayTasks) { $0.taskDescription }
+    private struct TaskGroup: Identifiable {
+        var id: String { name }
+        let name: String
+        let tasks: [Task]
+        let mostRecentStartTime: Date
+    }
+
+    private var sortedTaskGroups: [TaskGroup] {
+        let grouped = Dictionary(grouping: selectedDayTasks) { $0.taskDescription }
+        return grouped.map { name, tasks in
+            let sortedTasks = tasks.sorted { $0.startTime > $1.startTime }
+            return TaskGroup(
+                name: name,
+                tasks: sortedTasks,
+                mostRecentStartTime: sortedTasks.first?.startTime ?? .distantPast
+            )
+        }.sorted { $0.mostRecentStartTime > $1.mostRecentStartTime }
     }
 
     private var isViewingToday: Bool {
@@ -72,12 +87,11 @@ struct SidebarView: View {
 
                 if !selectedDayTasks.isEmpty {
                     Section {
-                        ForEach(groupedTasks.keys.sorted(), id: \.self) { taskName in
-                            let tasks = groupedTasks[taskName]!.sorted { $0.startTime > $1.startTime }
-                            if tasks.count > 1 {
-                                TaskStackView(tasks: tasks)
-                            } else {
-                                CompletedTaskRow(task: tasks[0])
+                        ForEach(sortedTaskGroups) { group in
+                            if group.tasks.count > 1 {
+                                TaskStackView(tasks: group.tasks)
+                            } else if let task = group.tasks.first {
+                                CompletedTaskRow(task: task)
                             }
                         }
                     } header: {
