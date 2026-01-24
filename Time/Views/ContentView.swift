@@ -141,10 +141,22 @@ struct ContentView: View {
                 }
             }
         }
-        .alert("Time to Track!", isPresented: $bindableManager.showAggressiveAlert) {
-            Button("OK", role: .cancel) { }
+        .confirmationDialog(
+            "Stop active tasks?",
+            isPresented: $bindableManager.showStopConfirmation,
+            titleVisibility: .visible
+        ) {
+            Button("Stop Others") {
+                manager.confirmStopAndStart()
+            }
+            Button("Keep All") {
+                manager.confirmKeepAndStart()
+            }
+            Button("Cancel", role: .cancel) {
+                manager.cancelPendingTask()
+            }
         } message: {
-            Text("You have no active tasks running.")
+            Text("You already have active tasks running. Would you like to stop them before starting the new one?")
         }
     }
 

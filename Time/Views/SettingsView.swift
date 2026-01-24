@@ -6,6 +6,7 @@ struct SettingsView: View {
     @AppStorage("aggressiveThreshold") private var aggressiveThreshold: Double = 60
     @AppStorage("enableAggressiveAlerts") private var enableAggressiveAlerts: Bool = true
     @AppStorage("allowSimultaneousTasks") private var allowSimultaneousTasks: Bool = true
+    @AppStorage("askToStopActiveTasks") private var askToStopActiveTasks: Bool = false
     
     var body: some View {
         Form {
@@ -35,6 +36,12 @@ struct SettingsView: View {
             
             Section("Task Settings") {
                 Toggle("Allow Simultaneous Active Tasks", isOn: $allowSimultaneousTasks)
+                
+                if allowSimultaneousTasks {
+                    Toggle("Ask to stop active tasks", isOn: $askToStopActiveTasks)
+                        .font(.body)
+                        .padding(.leading, AppTheme.Spacing.lg)
+                }
             }
         }
         .formStyle(.grouped)

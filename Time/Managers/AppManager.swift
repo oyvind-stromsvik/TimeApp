@@ -37,9 +37,18 @@ class AppManager: NSObject, UNUserNotificationCenterDelegate {
     private var allowSimultaneousTasks: Bool {
         userDefaults.bool(forKey: "allowSimultaneousTasks")
     }
+
+    private var askToStopActiveTasks: Bool {
+        userDefaults.bool(forKey: "askToStopActiveTasks")
+    }
     
     // This property is just to trigger UI updates for active tasks
     var lastTick: Date = Date()
+
+    // UI binding for stop confirmation
+    var showStopConfirmation: Bool = false
+    private(set) var pendingTaskAction: (() -> Void)?
+    private(set) var onCancelAction: (() -> Void)?
 
     // UI binding for aggressive alert
     var showAggressiveAlert: Bool = false
@@ -253,6 +262,41 @@ class AppManager: NSObject, UNUserNotificationCenterDelegate {
         }
     }
 
+    private func handleActiveTaskConflict(action: @escaping () -> Void, onCancel: (() -> Void)? = nil) {
+        if allowSimultaneousTasks && askToStopActiveTasks && !activeTasks.isEmpty {
+            pendingTaskAction = action
+            onCancelAction = onCancel
+            showStopConfirmation = true
+        } else {
+            if !allowSimultaneousTasks {
+                stopAllActiveTasks()
+            }
+            action()
+        }
+    }
+
+    func confirmStopAndStart() {
+        stopAllActiveTasks()
+        pendingTaskAction?()
+        pendingTaskAction = nil
+        onCancelAction = nil
+        showStopConfirmation = false
+    }
+
+    func confirmKeepAndStart() {
+        pendingTaskAction?()
+        pendingTaskAction = nil
+        onCancelAction = nil
+        showStopConfirmation = false
+    }
+
+    func cancelPendingTask() {
+        onCancelAction?()
+        pendingTaskAction = nil
+        onCancelAction = nil
+        showStopConfirmation = false
+    }
+
     // MARK: - Selection Management
 
     func selectTask(_ task: Task?, animated: Bool = true) {
@@ -377,10 +421,7 @@ class AppManager: NSObject, UNUserNotificationCenterDelegate {
 
     @discardableResult
     func addNewTask(description: String, startTime: Date, endTime: Date? = nil, isActive: Bool = false, undoManager: UndoManager? = nil) -> Task {
-        if isActive {
-            enforceSingleActiveTask()
-        }
-        let newTask = Task(taskDescription: description, startTime: startTime, isActive: isActive)
+        let newTask = Task(taskDescription: description, startTime: startTime, isActive: false)
         newTask.endTime = endTime
         modelContext.insert(newTask)
         save()
@@ -391,6 +432,18 @@ class AppManager: NSObject, UNUserNotificationCenterDelegate {
                 target.deleteTask(withId: snapshot.id, undoManager: undoManager, actionName: "Add Task")
             }
             undoManager.setActionName("Add Task")
+        }
+
+        if isActive {
+            handleActiveTaskConflict(action: { [weak self] in
+                guard let self else { return }
+                newTask.isActive = true
+                self.save()
+            }, onCancel: { [weak self] in
+                guard let self else { return }
+                self.modelContext.delete(newTask)
+                self.save()
+            })
         }
 
         return newTask
@@ -418,13 +471,31 @@ class AppManager: NSObject, UNUserNotificationCenterDelegate {
     func updateTask(_ task: Task, startTime: Date, endTime: Date?, description: String, undoManager: UndoManager? = nil) {
         let before = TaskSnapshot(task)
         
-        let becomingActive = (endTime == nil)
-        if becomingActive && !task.isActive {
-            enforceSingleActiveTask()
-        }
+        let shouldBecomeActive = (endTime == nil)
         
-        task.update(startTime: startTime, endTime: endTime, description: description)
-        save()
+        // Update basic fields but keep inactive if we need to ask
+        task.startTime = startTime
+        task.endTime = endTime
+        task.taskDescription = description
+        
+        if shouldBecomeActive && !task.isActive {
+            // Task wants to become active. Reset isActive to false for now while we check conflicts.
+            task.isActive = false 
+            save()
+            
+            handleActiveTaskConflict(action: { [weak self] in
+                guard let self else { return }
+                task.isActive = true
+                self.save()
+            }, onCancel: { [weak self] in
+                guard let self else { return }
+                before.apply(to: task)
+                self.save()
+            })
+        } else {
+            task.isActive = (endTime == nil)
+            save()
+        }
 
         let after = TaskSnapshot(task)
         guard before != after, let undoManager else { return }
