@@ -54,8 +54,16 @@ struct SidebarView: View {
     
     var body: some View {
         VStack(spacing: 0) {
-            List {
-                if !activeTasks.isEmpty {
+            ScrollViewReader { proxy in
+                List {
+                    // Hidden top target for scrolling
+                    Color.clear
+                        .frame(height: 0)
+                        .id("top")
+                        .listRowInsets(EdgeInsets())
+                        .listRowSeparator(.hidden)
+
+                    if !activeTasks.isEmpty {
                     Section {
                         ForEach(activeTasks) { task in
                             ActiveTaskRow(task: task)
@@ -71,8 +79,6 @@ struct SidebarView: View {
                         Image(systemName: "timer")
                             .font(.system(size: AppTheme.Typography.largeTitle, weight: .ultraLight))
                             .foregroundStyle(AppTheme.Colors.textSecondary.opacity(AppTheme.Opacity.secondaryTextFaint))
-
-
                         Text("No Active Tasks")
                             .font(AppTheme.Typography.emptyStateTitle())
                             .foregroundStyle(.secondary)
@@ -100,9 +106,15 @@ struct SidebarView: View {
                             .padding(.vertical, AppTheme.Spacing.md)
                     }
                 }
+                }
+                .listStyle(.sidebar)
+                .scrollContentBackground(.hidden)
+                .onChange(of: activeTasks) { _, _ in
+                    withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+                        proxy.scrollTo("top", anchor: .top)
+                    }
+                }
             }
-            .listStyle(.sidebar)
-            .scrollContentBackground(.hidden)
         }
         .background(AppTheme.Surfaces.sidebar)
     }
