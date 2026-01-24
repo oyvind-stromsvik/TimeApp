@@ -5,6 +5,7 @@ struct SettingsView: View {
     @AppStorage("enableIdleDetection") private var enableIdleDetection: Bool = true
     @AppStorage("aggressiveThreshold") private var aggressiveThreshold: Double = 60
     @AppStorage("enableAggressiveAlerts") private var enableAggressiveAlerts: Bool = true
+    @AppStorage("allowSimultaneousTasks") private var allowSimultaneousTasks: Bool = true
     
     var body: some View {
         Form {
@@ -30,6 +31,10 @@ struct SettingsView: View {
                     
                     Stepper("Alert Interval: \(Int(aggressiveThreshold / 60)) min", value: $aggressiveThreshold, in: 30...600, step: 30)
                 }
+            }
+            
+            Section("Task Settings") {
+                Toggle("Allow Simultaneous Active Tasks", isOn: $allowSimultaneousTasks)
             }
         }
         .formStyle(.grouped)

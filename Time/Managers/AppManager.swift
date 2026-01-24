@@ -33,6 +33,10 @@ class AppManager: NSObject, UNUserNotificationCenterDelegate {
     private var isIdleDetectionEnabled: Bool {
         userDefaults.bool(forKey: "enableIdleDetection")
     }
+
+    private var allowSimultaneousTasks: Bool {
+        userDefaults.bool(forKey: "allowSimultaneousTasks")
+    }
     
     // This property is just to trigger UI updates for active tasks
     var lastTick: Date = Date()
@@ -237,6 +241,18 @@ class AppManager: NSObject, UNUserNotificationCenterDelegate {
         return (try? modelContext.fetch(descriptor)) ?? []
     }
 
+    func stopAllActiveTasks() {
+        for task in activeTasks {
+            stopTask(task, undoManager: nil)
+        }
+    }
+
+    private func enforceSingleActiveTask() {
+        if !allowSimultaneousTasks {
+            stopAllActiveTasks()
+        }
+    }
+
     // MARK: - Selection Management
 
     func selectTask(_ task: Task?, animated: Bool = true) {
@@ -361,6 +377,9 @@ class AppManager: NSObject, UNUserNotificationCenterDelegate {
 
     @discardableResult
     func addNewTask(description: String, startTime: Date, endTime: Date? = nil, isActive: Bool = false, undoManager: UndoManager? = nil) -> Task {
+        if isActive {
+            enforceSingleActiveTask()
+        }
         let newTask = Task(taskDescription: description, startTime: startTime, isActive: isActive)
         newTask.endTime = endTime
         modelContext.insert(newTask)
@@ -398,6 +417,12 @@ class AppManager: NSObject, UNUserNotificationCenterDelegate {
 
     func updateTask(_ task: Task, startTime: Date, endTime: Date?, description: String, undoManager: UndoManager? = nil) {
         let before = TaskSnapshot(task)
+        
+        let becomingActive = (endTime == nil)
+        if becomingActive && !task.isActive {
+            enforceSingleActiveTask()
+        }
+        
         task.update(startTime: startTime, endTime: endTime, description: description)
         save()
 
@@ -448,11 +473,17 @@ class AppManager: NSObject, UNUserNotificationCenterDelegate {
 
     private func restoreDeletedTask(snapshot: TaskSnapshot, undoManager: UndoManager?, actionName: String) {
         // If it already exists, just apply values.
-        if fetchTask(id: snapshot.id) != nil {
+        if let existing = fetchTask(id: snapshot.id) {
+            if snapshot.isActive && !existing.isActive {
+                enforceSingleActiveTask()
+            }
             apply(snapshot: snapshot, undoManager: undoManager, actionName: actionName)
             return
         }
 
+        if snapshot.isActive {
+            enforceSingleActiveTask()
+        }
         let restored = Task(taskDescription: snapshot.taskDescription, startTime: snapshot.startTime, isActive: snapshot.isActive)
         restored.id = snapshot.id
         restored.endTime = snapshot.endTime

@@ -8,6 +8,7 @@ struct ContentView: View {
     @State private var selectedDate = Date()
     @State private var newTaskDescription = ""
     @State private var hourHeight: CGFloat = AppTheme.Timeline.defaultHourHeight
+    @AppStorage("allowSimultaneousTasks") private var allowSimultaneousTasks: Bool = true
 
     var body: some View {
         @Bindable var bindableManager = manager
