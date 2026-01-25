@@ -171,7 +171,7 @@ struct AppTheme {
         static let gridLine = Color(nsColor: .separatorColor).opacity(0.55)
         
         static var background: Color {
-            Color(NSColor.white)
+            Color(NSColor.controlBackgroundColor)
         }
         
         static var sidebarBackground: Color {

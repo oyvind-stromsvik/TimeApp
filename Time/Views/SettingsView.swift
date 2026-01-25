@@ -1,5 +1,13 @@
 import SwiftUI
 
+enum AppearanceMode: String, CaseIterable, Identifiable {
+    case system = "System"
+    case light = "Light"
+    case dark = "Dark"
+
+    var id: String { rawValue }
+}
+
 struct SettingsView: View {
     @AppStorage("idleThreshold") private var idleThreshold: Double = 300
     @AppStorage("enableIdleDetection") private var enableIdleDetection: Bool = true
@@ -7,9 +15,19 @@ struct SettingsView: View {
     @AppStorage("enableAggressiveAlerts") private var enableAggressiveAlerts: Bool = true
     @AppStorage("allowSimultaneousTasks") private var allowSimultaneousTasks: Bool = true
     @AppStorage("askToStopActiveTasks") private var askToStopActiveTasks: Bool = false
+    @AppStorage("appearanceMode") private var appearanceMode: String = AppearanceMode.system.rawValue
     
     var body: some View {
         Form {
+            Section("Appearance") {
+                Picker("Theme", selection: $appearanceMode) {
+                    ForEach(AppearanceMode.allCases) { mode in
+                        Text(mode.rawValue).tag(mode.rawValue)
+                    }
+                }
+                .pickerStyle(.segmented)
+            }
+
             Section("Idle Detection") {
                 Toggle("Enable Idle Detection", isOn: $enableIdleDetection)
                 

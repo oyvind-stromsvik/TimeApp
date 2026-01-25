@@ -6,22 +6,34 @@ import SwiftData
 struct TimeApp: App {
     let sharedModelContainer: ModelContainer
     let manager: AppManager
+    @AppStorage("appearanceMode") private var appearanceMode: String = "System"
     
     init() {
         let schema = Schema([
             Task.self,
         ])
         let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
-        
+
         do {
             let container = try ModelContainer(for: schema, configurations: [modelConfiguration])
             self.sharedModelContainer = container
             self.manager = AppManager(modelContext: container.mainContext)
-            
+
             // Disable native macOS window tabbing
             NSWindow.allowsAutomaticWindowTabbing = false
         } catch {
             fatalError("Could not create ModelContainer: \(error)")
+        }
+    }
+
+    private var colorScheme: ColorScheme? {
+        switch appearanceMode {
+        case "Light":
+            return .light
+        case "Dark":
+            return .dark
+        default:
+            return nil
         }
     }
     
@@ -29,11 +41,13 @@ struct TimeApp: App {
         WindowGroup {
             ContentView()
                 .environment(manager)
+                .preferredColorScheme(colorScheme)
         }
         .modelContainer(sharedModelContainer)
         
         Settings {
             SettingsView()
+                .preferredColorScheme(colorScheme)
         }
 
         .commands {
