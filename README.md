@@ -2,18 +2,20 @@
 
 A native macOS time tracking app built with Swift and SwiftUI, using SwiftData for persistence. The app was inspired by Toggl Track, which was the app I've been using previously, but it and other time tracking apps don't support tracking time on multiple tasks simultaneously. This was the main reason for making this app. I use active timers tracking my workday and I wanted the ability to run multiple at once if I was in a meeting while working on something else, or waiting for automations to finish on one task while working on another.
 
+I'm not going to pretend that this app is elegant. It started with me focusing exclusively on the day view, only to realize that the primary feature I wanted didn't really work well in such a view at all, so I added an additional list view in the sidebar. A more elegant approach would be to have a horizontal timeline across the top and a list view below or something, but there's just something I find very visually appealing about seeing the work day progress in a day view, so that feature is here to stay.
+
 _**Note:**  A large part of this app and this README was vibed, hence all the nonsense in both code and descriptions._
 
-## Key Features
+## Features
 
 - **24-Hour Timeline View**: Full calendar day visualization
-- **Quick Add**: Click anywhere in the timeline to instantly create or edit a time entry
-- **Drag & Drop**: Intuitively drag time entries to change their start and end times
-- **Resizable Blocks**: Grab the top or bottom edge of any entry to adjust its duration
+- **Quick Add**: Click anywhere in the timeline to instantly create or edit a task
+- **Drag & Drop**: Drag tasks to change their start and end times
+- **Resizable Blocks**: Drag the top or bottom edge of any task to adjust its duration
 - **Multiple Simultaneous Tasks**: Run multiple tasks concurrently (configurable in settings)
-- **Overlapping Entries**: Parallel tasks displayed side-by-side in the day view
+- **Overlapping Tasks**: Parallel tasks displayed side-by-side in the day view
 - **Active Task Display**: Running tasks highlighted in sidebar and menu bar
-- **Selection & Management**: Select entries to edit description, start time, end time, duration, delete them, or restart tasks
+- **Selection & Management**: Select tasks to edit description, start time, end time, duration, delete them, or restart tasks
 - **Task Grouping**: Similar-named tasks automatically stack in the sidebar
 - **Date Navigation**: Previous/Next day buttons and "Today" quick access
 - **Undo/Redo**: Full support for undoing and redoing operations
@@ -30,6 +32,33 @@ _**Note:**  A large part of this app and this README was vibed, hence all the no
 - **Swift**: 5.0
 
 ## Installation
+
+### Download Pre-built App
+
+The easiest way to get started is to download the latest release:
+
+1. Visit the [Releases page](https://github.com/oyvind-stromsvik/TimeApp/releases)
+2. Download the latest `.zip` archive
+3. Unzip and move the app to your Applications folder
+4. See [Running Unsigned Builds](#running-unsigned-builds) below for instructions on opening the app for the first time
+
+### Running Unsigned Builds
+
+This app is not officially signed with an Apple Developer certificate. When you first try to open the app, macOS will prevent it from running with a security warning.
+
+### How to Allow the App
+
+1. Try to open the app (you'll see a warning that it can't be opened)
+2. Open **System Settings** (or **System Preferences** on older macOS versions)
+3. Go to **Privacy & Security**
+4. Scroll down to the **Security** section
+5. You should see a message about "TimeApp" being blocked
+6. Click **Open Anyway** or **Allow Anyway**
+7. Confirm by clicking **Open** in the dialog that appears
+
+Alternatively, you can right-click (or Control-click) the app in Finder and select **Open**, then click **Open** in the warning dialog. This bypasses the initial Gatekeeper check.
+
+**Note:** Only do this if you trust the source of the app. If you built it yourself from source, you know exactly what code is running.
 
 ### Building from Source
 
