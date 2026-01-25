@@ -9,13 +9,12 @@ struct TimeApp: App {
     @AppStorage("appearanceMode") private var appearanceMode: String = "System"
     
     init() {
-        let schema = Schema([
-            Task.self,
-        ])
-        let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
-
         do {
-            let container = try ModelContainer(for: schema, configurations: [modelConfiguration])
+            // Use the migration plan to ensure proper schema versioning
+            let container = try ModelContainer(
+                for: Task.self,
+                migrationPlan: TaskMigrationPlan.self
+            )
             self.sharedModelContainer = container
             self.manager = AppManager(modelContext: container.mainContext)
 
