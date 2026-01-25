@@ -1,5 +1,7 @@
 # TimeApp
 
+![TimeApp Screenshot](docs/screenshot.png)
+
 A native macOS time tracking app built with Swift and SwiftUI, using SwiftData for persistence. The app was inspired by Toggl Track, which was the app I've been using previously, but it and other time tracking apps don't support tracking time on multiple tasks simultaneously. This was the main reason for making this app. I use active timers tracking my workday and I wanted the ability to run multiple at once if I was in a meeting while working on something else, or waiting for automations to finish on one task while working on another.
 
 I'm not going to pretend that this app is elegant. It started with me focusing exclusively on the day view, only to realize that the primary feature I wanted didn't really work well in such a view at all, so I added an additional list view in the sidebar. A more elegant approach would be to have a horizontal timeline across the top and a list view below or something, but there's just something I find very visually appealing about seeing the work day progress in a day view, so that feature is here to stay.
