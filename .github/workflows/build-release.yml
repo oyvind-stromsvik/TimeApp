@@ -20,5 +20,5 @@ jobs:
             -project "Time.xcodeproj" \
             -scheme "Release" \
             -configuration Release \
-            -destination "platform=macOS,arch=x86_64,arch=arm64" \
+            -destination "platform=macOS" \
             | xcpretty && exit ${PIPESTATUS[0]}
