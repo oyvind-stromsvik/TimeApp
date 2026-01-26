@@ -16,7 +16,14 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # 2️⃣ Build the app using Xcode
+      # 2️⃣ Read app version from project.pbxproj
+      - name: Get app version
+        run: |
+          VERSION=$(grep -m1 'MARKETING_VERSION' Time.xcodeproj/project.pbxproj | sed 's/.*= //; s/;//')
+          echo "APP_VERSION=$VERSION" >> $GITHUB_ENV
+          echo "App version is $VERSION"
+
+      # 3️⃣ Build the app using Xcode
       - name: Build Release scheme
         run: |
           echo "Building Release scheme..."
@@ -27,7 +34,7 @@ jobs:
             -destination "platform=macOS" \
             | xcpretty && exit ${PIPESTATUS[0]}
 
-      # 3️⃣ Package the .app into a .zip inside the repo folder
+      # 4️⃣ Package the .app into a .zip inside the repo folder
       - name: Package .app into ZIP
         run: |
           echo "Locating Time.app..."
@@ -44,12 +51,12 @@ jobs:
           # Save path for the release step
           echo "ZIP_PATH=Time.app.zip" >> $GITHUB_ENV
 
-      # 4️⃣ Create GitHub Release AND upload ZIP in one step
+      # 5️⃣ Create GitHub Release AND upload ZIP in one step
       - name: Create GitHub Release with ZIP
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: "v${{ github.run_number }}"
-          name: "Release v${{ github.run_number }}"
+          tag_name: ${{ env.APP_VERSION }}
+          name: "Release ${{ env.APP_VERSION }}"
           body: "Automated release built from commit ${{ github.sha }}"
           files: ${{ env.ZIP_PATH }}
         env:
