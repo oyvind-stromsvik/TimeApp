@@ -49,7 +49,7 @@ struct TaskBlock: View {
                     RoundedRectangle(cornerRadius: AppTheme.CornerRadius.card, style: .continuous)
                         .fill(
                             LinearGradient(
-                                colors: [tintColor.opacity(task.isActive ? 0.5 : 0.5), tintColor.opacity(0.1)],
+                                colors: [tintColor.opacity(task.isActive ? 0.5 : 0.25), tintColor.opacity(0.1)],
                                 startPoint: .topLeading,
                                 endPoint: .bottomTrailing
                             )
@@ -58,7 +58,7 @@ struct TaskBlock: View {
                 .overlay {
                     RoundedRectangle(cornerRadius: AppTheme.CornerRadius.card, style: .continuous)
                         .stroke(
-                            isSelected ? AppTheme.Colors.accent.opacity(0.95) : AppTheme.Colors.separator.opacity(isHovering ? 0.55 : 0.35),
+                            isSelected ? AppTheme.Colors.accent.opacity(0.95) : tintColor.opacity(isHovering ? 0.95 : 0.65),
                             lineWidth: isSelected ? 2 : 1
                         )
                 }
