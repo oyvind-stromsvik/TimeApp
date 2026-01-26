@@ -4,8 +4,9 @@ import SwiftData
 import UserNotifications
 import CoreGraphics
 
+@MainActor
 @Observable
-class AppManager: NSObject, UNUserNotificationCenterDelegate {
+class AppManager: NSObject, @preconcurrency UNUserNotificationCenterDelegate {
     private var timerService: TimerService
     private var systemService: SystemService
     private var modelContext: ModelContext
@@ -51,7 +52,24 @@ class AppManager: NSObject, UNUserNotificationCenterDelegate {
     private(set) var onCancelAction: (() -> Void)?
 
     // UI binding for aggressive alert
-    var showAggressiveAlert: Bool = false
+    var showAggressiveAlert: Bool = false {
+        didSet {
+            if showAggressiveAlert {
+                NSApp.dockTile.badgeLabel = "!"
+                NSApp.dockTile.display()
+                NSApp.requestUserAttention(.criticalRequest)
+                
+                // Force windows to de-miniaturize
+                NSApp.windows.forEach { window in
+                    if window.isMiniaturized {
+                        window.deminiaturize(nil)
+                    }
+                }
+            } else {
+                NSApp.dockTile.badgeLabel = nil
+            }
+        }
+    }
     
     // UI binding for sidebar visibility and width
     var isSidebarVisible: Bool = true
@@ -138,11 +156,7 @@ class AppManager: NSObject, UNUserNotificationCenterDelegate {
         NSApp.activate(ignoringOtherApps: true)
         completionHandler()
     }
-    
-    deinit {
-        timerService.stop()
-    }
-    
+
     private func startTimer() {
         timerService.onTick = { [weak self] in
             guard let self else { return }

@@ -30,6 +30,10 @@ class DefaultTimerService: TimerService {
         timer?.invalidate()
         timer = nil
     }
+    
+    deinit {
+        stop()
+    }
 }
 
 class DefaultSystemService: SystemService {
