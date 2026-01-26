@@ -158,6 +158,13 @@ struct ContentView: View {
         } message: {
             Text("You already have active tasks running. Would you like to stop them before starting the new one?")
         }
+        .overlay {
+            if bindableManager.showAggressiveAlert {
+                AggressiveAlertView {
+                    manager.showAggressiveAlert = false
+                }
+            }
+        }
     }
 
     private func startTask() {
