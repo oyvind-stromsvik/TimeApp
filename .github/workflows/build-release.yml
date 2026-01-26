@@ -17,7 +17,8 @@ jobs:
       - name: Build Release scheme
         run: |
           xcodebuild clean build analyze \
-            -scheme "Release" \
             -project "Time.xcodeproj" \
-            -destination "platform=macOS" \
+            -scheme "Release" \
+            -configuration Release \
+            -destination "platform=macOS,arch=x86_64,arch=arm64" \
             | xcpretty && exit ${PIPESTATUS[0]}
