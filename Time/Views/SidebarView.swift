@@ -181,7 +181,13 @@ struct ActiveTaskRow: View {
 
                 // Subtle accent tint to highlight active state
                 RoundedRectangle(cornerRadius: AppTheme.CornerRadius.card)
-                    .fill(AppTheme.Colors.accent.opacity(0.03))
+                    .fill(
+                        LinearGradient(
+                            colors: [AppTheme.Colors.accent.opacity(0.35), AppTheme.Colors.accent.opacity(0.1)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
 
                 // Hover effect
                 RoundedRectangle(cornerRadius: AppTheme.CornerRadius.card)
@@ -189,7 +195,7 @@ struct ActiveTaskRow: View {
             }
             .overlay(
                 RoundedRectangle(cornerRadius: AppTheme.CornerRadius.card)
-                    .strokeBorder(AppTheme.Colors.accent.opacity(0.25), lineWidth: 1)
+                    .strokeBorder(AppTheme.Colors.accent.opacity(isHovering ? 0.95 : 0.55), lineWidth: 1)
             )
             .appShadow(AppTheme.Shadows.active)
         )
