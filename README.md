@@ -58,8 +58,6 @@ This app is not officially signed with an Apple Developer certificate. When you 
 6. Click **Open Anyway** or **Allow Anyway**
 7. Confirm by clicking **Open** in the dialog that appears
 
-Alternatively, you can right-click (or Control-click) the app in Finder and select **Open**, then click **Open** in the warning dialog. This bypasses the initial Gatekeeper check.
-
 **Note:** Only do this if you trust the source of the app. If you built it yourself from source, you know exactly what code is running.
 
 ### Building from Source
