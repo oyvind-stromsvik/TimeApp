@@ -1,0 +1,23 @@
+name: Build (Release)
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build Release scheme
+        run: |
+          xcodebuild clean build analyze \
+            -scheme "Release" \
+            -project "Time.xcodeproj" \
+            -destination "platform=macOS" \
+            | xcpretty && exit ${PIPESTATUS[0]}
