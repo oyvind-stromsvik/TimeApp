@@ -26,12 +26,14 @@ jobs:
       # 3️⃣ Build the app using Xcode
       - name: Build Release scheme
         run: |
-          echo "Building Release scheme..."
+          echo "Building Universal (arm64 + x86_64) Release..."
           xcodebuild clean build analyze \
             -project "Time.xcodeproj" \
             -scheme "Release" \
             -configuration Release \
             -destination "platform=macOS" \
+            ARCHS="arm64 x86_64" \
+            ONLY_ACTIVE_ARCH=NO \
             | xcpretty && exit ${PIPESTATUS[0]}
 
       # 4️⃣ Package the .app into a .zip inside the repo folder
