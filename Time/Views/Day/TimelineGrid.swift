@@ -20,6 +20,7 @@ struct TimelineGrid: View {
                             .fill(AppTheme.Colors.gridLine)
                             .frame(height: 1)
                             .offset(x: AppTheme.Timeline.hourLineOffsetX)
+                            .padding(.trailing, AppTheme.Timeline.hourLineOffsetX)
                         Spacer()
                     }
                 }
