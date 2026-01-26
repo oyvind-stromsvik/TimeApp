@@ -58,6 +58,7 @@ struct TimeApp: App {
                 }
                 .keyboardShortcut("s", modifiers: [.control, .command])
             }
+
             CommandGroup(replacing: .appInfo) {
                 Button("About Time") {
                     let credits = NSMutableAttributedString()
@@ -86,6 +87,9 @@ struct TimeApp: App {
                     NSApp.orderFrontStandardAboutPanel(options: [
                         .credits: credits
                     ])
+                }
+                Button("Check for Updates") {
+                    UpdateManager.shared.showUpdateWindow()
                 }
             }
             CommandGroup(replacing: .undoRedo) {
