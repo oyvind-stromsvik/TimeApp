@@ -3,9 +3,9 @@ name: Build macOS App and create release
 on:
   push:
     branches: [ main ]
-  pull_request:
-    branches: [ main ]
-  workflow_dispatch:    # Allow manual triggering
+    paths:
+      - "Time.xcodeproj/project.pbxproj"
+  workflow_dispatch:
 
 jobs:
   build_and_release:
