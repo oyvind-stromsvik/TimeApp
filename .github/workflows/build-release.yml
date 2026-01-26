@@ -27,20 +27,22 @@ jobs:
             -destination "platform=macOS" \
             | xcpretty && exit ${PIPESTATUS[0]}
 
-      # 3️⃣ Locate the .app bundle and zip it
+      # 3️⃣ Package the .app into a .zip and save path to env
       - name: Package .app into ZIP
         run: |
-          echo "Packaging .app into Time.app.zip"
+          echo "Locating Time.app..."
           APP_PATH=$(find ~/Library/Developer/Xcode/DerivedData/ -type d -name "Time.app" | head -n1)
           if [ -z "$APP_PATH" ]; then
             echo "Error: Time.app not found!"
             exit 1
           fi
+          ZIP_PATH="${APP_PATH%/*}/Time.app.zip"
           cd $(dirname "$APP_PATH")
           zip -r Time.app.zip Time.app
-          echo "Packaged $APP_PATH into $(pwd)/Time.app.zip"
+          echo "Packaged $APP_PATH into $ZIP_PATH"
+          echo "ZIP_PATH=$ZIP_PATH" >> $GITHUB_ENV
 
-      # 4️⃣ Create a GitHub release automatically
+      # 4️⃣ Create GitHub Release with a unique tag
       - name: Create GitHub Release
         id: create_release
         uses: softprops/action-gh-release@v1
@@ -51,10 +53,11 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      # 5️⃣ Upload the zip as an asset to the release
+      # 5️⃣ Upload the .zip as an asset to the release
       - name: Upload ZIP to Release
         uses: softprops/action-gh-release@v1
         with:
-          files: $(find ~/Library/Developer/Xcode/DerivedData/ -type f -name "Time.app.zip" | head -n1)
+          files: ${{ env.ZIP_PATH }}
+          tag_name: ${{ steps.create_release.outputs.tag_name }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
