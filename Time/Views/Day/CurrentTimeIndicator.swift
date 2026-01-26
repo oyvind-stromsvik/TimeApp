@@ -23,13 +23,14 @@ struct CurrentTimeIndicator: View {
             Rectangle()
                 .fill(
                     LinearGradient(
-                        colors: [AppTheme.Colors.nowIndicator, AppTheme.Colors.nowIndicator.opacity(0)],
+                        colors: [AppTheme.Colors.nowIndicator, AppTheme.Colors.nowIndicator.opacity(0.25)],
                         startPoint: .leading,
                         endPoint: .trailing
                     )
                 )
                 .frame(height: 2)
                 .offset(x: -6)
+                .padding(.trailing, AppTheme.Timeline.hourLineOffsetX)
         }
         .offset(y: yOffset - 1)
         .zIndex(100)
