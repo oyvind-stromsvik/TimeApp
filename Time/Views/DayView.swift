@@ -71,6 +71,7 @@ struct DayView: View {
                 .coordinateSpace(name: "timeline")
                 .frame(maxWidth: .infinity)
                 .padding(.leading, AppTheme.Timeline.leadingGutterWidth)
+                .padding(.trailing, AppTheme.Spacing.lg)
             }
             .background(AppTheme.Colors.background)
             .onAppear {

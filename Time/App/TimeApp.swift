@@ -75,12 +75,13 @@ struct TimeApp: App {
                         .font: NSFont.systemFont(ofSize: NSFont.smallSystemFontSize),
                         .foregroundColor: NSColor.linkColor,
                         .underlineStyle: NSUnderlineStyle.single.rawValue,
-                        .link: URL(string: "https://github.com/oyvind-stromsvik")!,
+                        .link: URL(string: "https://github.com/oyvind-stromsvik/TimeApp")!,
                         .paragraphStyle: paragraphStyle
                     ]
                     
                     credits.append(NSAttributedString(string: "Made by Øyvind Strømsvik\n\n", attributes: normalAttributes))
-                    credits.append(NSAttributedString(string: "GitHub Profile", attributes: linkAttributes))
+                    credits.append(NSAttributedString(string: "Check for updates, comment, critique or contribute on GitHub:\n", attributes: normalAttributes))
+                    credits.append(NSAttributedString(string: "TimeApp GitHub Repo", attributes: linkAttributes))
                     
                     NSApp.orderFrontStandardAboutPanel(options: [
                         .credits: credits
