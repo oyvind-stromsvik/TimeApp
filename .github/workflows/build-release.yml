@@ -1,24 +1,60 @@
-name: Build (Release)
+name: Build macOS App and create release
 
 on:
   push:
     branches: [ main ]
   pull_request:
     branches: [ main ]
+  workflow_dispatch:    # Allow manual triggering
 
 jobs:
-  build:
+  build_and_release:
     runs-on: macos-latest
 
     steps:
+      # 1️⃣ Checkout the repository
       - name: Checkout
         uses: actions/checkout@v4
 
+      # 2️⃣ Build the app using Xcode
       - name: Build Release scheme
         run: |
+          echo "Building Release scheme..."
           xcodebuild clean build analyze \
             -project "Time.xcodeproj" \
             -scheme "Release" \
             -configuration Release \
             -destination "platform=macOS" \
             | xcpretty && exit ${PIPESTATUS[0]}
+
+      # 3️⃣ Locate the .app bundle and zip it
+      - name: Package .app into ZIP
+        run: |
+          echo "Packaging .app into Time.app.zip"
+          APP_PATH=$(find ~/Library/Developer/Xcode/DerivedData/ -type d -name "Time.app" | head -n1)
+          if [ -z "$APP_PATH" ]; then
+            echo "Error: Time.app not found!"
+            exit 1
+          fi
+          cd $(dirname "$APP_PATH")
+          zip -r Time.app.zip Time.app
+          echo "Packaged $APP_PATH into $(pwd)/Time.app.zip"
+
+      # 4️⃣ Create a GitHub release automatically
+      - name: Create GitHub Release
+        id: create_release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: "v${{ github.run_number }}"
+          name: "Release v${{ github.run_number }}"
+          body: "Automated release built from commit ${{ github.sha }}"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # 5️⃣ Upload the zip as an asset to the release
+      - name: Upload ZIP to Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: $(find ~/Library/Developer/Xcode/DerivedData/ -type f -name "Time.app.zip" | head -n1)
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
