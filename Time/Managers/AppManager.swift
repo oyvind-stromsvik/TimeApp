@@ -187,6 +187,10 @@ class AppManager: NSObject, @preconcurrency UNUserNotificationCenterDelegate {
         }
         // Case 2: Active task -> Check for idle
         else {
+            // Reset aggressive alert timer while tasks are active
+            // so it starts fresh when the task is stopped
+            lastAggressiveAlert = Date()
+
             guard isIdleDetectionEnabled else { return }
             guard let idleTime = systemService.getIdleTime() else { return }
             
