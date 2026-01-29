@@ -224,7 +224,8 @@ struct ActiveTaskRow: View {
                 manager.openPopover(for: task, from: .sidebar(taskID: task.id))
                 manager.selectTask(task)
             }
-            Button("Duplicate") { manager.duplicateTask(task, undoManager: undoManager) }
+            Button("Split") { manager.splitTask(task, from: .sidebar(taskID: task.id), undoManager: undoManager) }
+            Button("Duplicate") { manager.duplicateTask(task, from: .sidebar(taskID: task.id), undoManager: undoManager) }
             Divider()
             Button("Delete", role: .destructive) { manager.deleteTask(task, undoManager: undoManager) }
         }
@@ -465,7 +466,8 @@ struct CompletedTaskRow: View {
                 manager.openPopover(for: task, from: .sidebar(taskID: task.id))
                 manager.selectTask(task)
             }
-            Button("Duplicate") { manager.duplicateTask(task, undoManager: undoManager) }
+            Button("Split") { manager.splitTask(task, from: .sidebar(taskID: task.id), undoManager: undoManager) }
+            Button("Duplicate") { manager.duplicateTask(task, from: .sidebar(taskID: task.id), undoManager: undoManager) }
             Divider()
             Button("Delete", role: .destructive) { manager.deleteTask(task, undoManager: undoManager) }
         }

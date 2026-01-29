@@ -523,15 +523,27 @@ class AppManager: NSObject, @preconcurrency UNUserNotificationCenterDelegate {
         undoManager.setActionName("Edit Task")
     }
     
-    func duplicateTask(_ task: Task, undoManager: UndoManager? = nil) {
+    func duplicateTask(_ task: Task, from location: PopoverLocation, undoManager: UndoManager? = nil) {
         let newTask = Task(
             taskDescription: task.taskDescription,
             startTime: task.startTime,
             isActive: false
         )
-        newTask.endTime = task.endTime
+        // For active tasks, use current time as end time to preserve duration
+        newTask.endTime = task.isActive ? Date() : task.endTime
         modelContext.insert(newTask)
         save()
+
+        // Open popover for the new task
+        let newLocation: PopoverLocation = switch location {
+        case .dayView: .dayView(taskID: newTask.id)
+        case .sidebar: .sidebar(taskID: newTask.id)
+        case .none: .none
+        }
+        if newLocation != .none {
+            popoverLocation = newLocation
+            selectTask(newTask)
+        }
 
         if let undoManager {
             let snapshot = TaskSnapshot(newTask)
@@ -539,6 +551,115 @@ class AppManager: NSObject, @preconcurrency UNUserNotificationCenterDelegate {
                 target.deleteTask(withId: snapshot.id, undoManager: undoManager, actionName: "Duplicate Task")
             }
             undoManager.setActionName("Duplicate Task")
+        }
+    }
+
+    func splitTask(_ task: Task, from location: PopoverLocation, undoManager: UndoManager? = nil) {
+        let effectiveEndTime = task.isActive ? Date() : (task.endTime ?? Date())
+        let midpoint = task.startTime.addingTimeInterval(effectiveEndTime.timeIntervalSince(task.startTime) / 2)
+
+        // Store original task's start time for undo
+        let originalStartTime = task.startTime
+        let originalTaskId = task.id
+
+        // Create new task for the first half
+        let newTask = Task(
+            taskDescription: task.taskDescription,
+            startTime: task.startTime,
+            isActive: false
+        )
+        newTask.endTime = midpoint
+        modelContext.insert(newTask)
+
+        // Update original task's start time to midpoint (so it becomes the second half)
+        task.startTime = midpoint
+        save()
+
+        // Open popover for the new task
+        let newLocation: PopoverLocation = switch location {
+        case .dayView: .dayView(taskID: newTask.id)
+        case .sidebar: .sidebar(taskID: newTask.id)
+        case .none: .none
+        }
+        if newLocation != .none {
+            popoverLocation = newLocation
+            selectTask(newTask)
+        }
+
+        if let undoManager {
+            let newTaskSnapshot = TaskSnapshot(newTask)
+            undoManager.registerUndo(withTarget: self) { target in
+                target.undoSplitTask(
+                    newTaskId: newTaskSnapshot.id,
+                    originalTaskId: originalTaskId,
+                    originalStartTime: originalStartTime,
+                    undoManager: undoManager
+                )
+            }
+            undoManager.setActionName("Split Task")
+        }
+    }
+
+    private func undoSplitTask(newTaskId: UUID, originalTaskId: UUID, originalStartTime: Date, undoManager: UndoManager?) {
+        // Delete the new task created by split
+        guard let newTask = fetchTask(id: newTaskId) else { return }
+        let newTaskSnapshot = TaskSnapshot(newTask)
+        modelContext.delete(newTask)
+
+        // Restore original task's start time
+        if let originalTask = fetchTask(id: originalTaskId) {
+            let currentStartTime = originalTask.startTime
+            originalTask.startTime = originalStartTime
+            save()
+
+            // Register redo
+            if let undoManager {
+                undoManager.registerUndo(withTarget: self) { target in
+                    target.redoSplitTask(
+                        newTaskSnapshot: newTaskSnapshot,
+                        originalTaskId: originalTaskId,
+                        splitStartTime: currentStartTime,
+                        undoManager: undoManager
+                    )
+                }
+                undoManager.setActionName("Split Task")
+            }
+        } else {
+            save()
+        }
+    }
+
+    private func redoSplitTask(newTaskSnapshot: TaskSnapshot, originalTaskId: UUID, splitStartTime: Date, undoManager: UndoManager?) {
+        // Recreate the split task
+        let newTask = Task(
+            taskDescription: newTaskSnapshot.taskDescription,
+            startTime: newTaskSnapshot.startTime,
+            isActive: newTaskSnapshot.isActive
+        )
+        newTask.id = newTaskSnapshot.id
+        newTask.endTime = newTaskSnapshot.endTime
+        modelContext.insert(newTask)
+
+        // Update original task's start time back to midpoint
+        if let originalTask = fetchTask(id: originalTaskId) {
+            let originalStartTime = originalTask.startTime
+            originalTask.startTime = splitStartTime
+            save()
+
+            // Register undo
+            if let undoManager {
+                undoManager.registerUndo(withTarget: self) { target in
+                    target.undoSplitTask(
+                        newTaskId: newTaskSnapshot.id,
+                        originalTaskId: originalTaskId,
+                        originalStartTime: originalStartTime,
+                        undoManager: undoManager
+                    )
+                }
+                undoManager.setActionName("Split Task")
+            }
+        } else {
+            save()
         }
     }
     

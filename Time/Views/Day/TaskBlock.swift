@@ -88,7 +88,8 @@ struct TaskBlock: View {
                 manager.openPopover(for: task, from: .dayView(taskID: task.id))
                 manager.selectTask(task)
             }
-            Button("Duplicate") { manager.duplicateTask(task, undoManager: undoManager) }
+            Button("Split") { manager.splitTask(task, from: .dayView(taskID: task.id), undoManager: undoManager) }
+            Button("Duplicate") { manager.duplicateTask(task, from: .dayView(taskID: task.id), undoManager: undoManager) }
             Divider()
             Button("Delete", role: .destructive) { manager.deleteTask(task, undoManager: undoManager) }
         }
@@ -130,7 +131,8 @@ struct TaskBlock: View {
                     manager.openPopover(for: task, from: .dayView(taskID: task.id))
                     manager.selectTask(task)
                 },
-                onDuplicate: { manager.duplicateTask(task, undoManager: undoManager) },
+                onSplit: { manager.splitTask(task, from: .dayView(taskID: task.id), undoManager: undoManager) },
+                onDuplicate: { manager.duplicateTask(task, from: .dayView(taskID: task.id), undoManager: undoManager) },
                 onDelete: { manager.deleteTask(task, undoManager: undoManager) }
             )
             .offset(y: -AppTheme.Spacing.md)
@@ -146,7 +148,8 @@ struct TaskBlock: View {
                     manager.openPopover(for: task, from: .dayView(taskID: task.id))
                     manager.selectTask(task)
                 },
-                onDuplicate: { manager.duplicateTask(task, undoManager: undoManager) },
+                onSplit: { manager.splitTask(task, from: .dayView(taskID: task.id), undoManager: undoManager) },
+                onDuplicate: { manager.duplicateTask(task, from: .dayView(taskID: task.id), undoManager: undoManager) },
                 onDelete: { manager.deleteTask(task, undoManager: undoManager) }
             )
             .offset(y: AppTheme.Spacing.md)
@@ -287,6 +290,7 @@ struct ResizeHandle: View {
     let onResize: (CGFloat) -> Void
     let onEnded: () -> Void
     let onTap: () -> Void
+    let onSplit: () -> Void
     let onDuplicate: () -> Void
     let onDelete: () -> Void
 
@@ -310,6 +314,7 @@ struct ResizeHandle: View {
             }
             .contextMenu {
                 Button("Edit") { onTap() }
+                Button("Split") { onSplit() }
                 Button("Duplicate") { onDuplicate() }
                 Divider()
                 Button("Delete", role: .destructive) { onDelete() }
