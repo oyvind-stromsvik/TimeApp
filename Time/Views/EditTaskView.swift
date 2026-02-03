@@ -16,6 +16,8 @@ struct EditTaskView: View {
     @State private var durationString: String = ""
     @State private var showingDiscardAlert = false
     @State private var previousEndTime: Date?
+    @State private var durationSnapshot: TimeInterval = 0
+    @FocusState private var isDurationFocused: Bool
 
     private let originalDescription: String
     private let originalStartTime: Date
@@ -30,7 +32,7 @@ struct EditTaskView: View {
         self._endTime = State(initialValue: task.endTime ?? Date())
         self._isActive = State(initialValue: task.isActive)
 
-        self._durationString = State(initialValue: Task.formatDuration(task.duration))
+        self._durationString = State(initialValue: Self.formatDurationForInput(task.duration))
 
         self.originalDescription = task.taskDescription
         self.originalStartTime = task.startTime
@@ -91,10 +93,18 @@ struct EditTaskView: View {
                             .font(AppTheme.Typography.durationDisplay())
                             .disabled(isActive)
                             .appCardField(disabledStyle: isActive)
-                            .onChange(of: durationString) { _, newValue in
-                                updateTimesFromDuration()
+                            .focused($isDurationFocused)
+                            .onChange(of: isDurationFocused) { _, focused in
+                                if focused {
+                                    durationSnapshot = endTime.timeIntervalSince(startTime)
+                                } else {
+                                    commitDurationInput()
+                                }
                             }
-                            .onSubmit(saveChanges)
+                            .onSubmit {
+                                commitDurationInput()
+                                saveChanges()
+                            }
                         HStack(spacing: AppTheme.Spacing.lg) {
                             DatePicker("", selection: $startTime, displayedComponents: .hourAndMinute)
                                 .datePickerStyle(.stepperField)
@@ -211,8 +221,11 @@ struct EditTaskView: View {
     }
     
     private func updateDurationFromTimes() {
+        if isDurationFocused {
+            return
+        }
         let duration = endTime.timeIntervalSince(startTime)
-        durationString = Task.formatDuration(duration)
+        durationString = Self.formatDurationForInput(duration)
     }
     
     private func updatePreview() {
@@ -229,19 +242,61 @@ struct EditTaskView: View {
         manager.previewTaskState = nil
     }
 
-    private func updateTimesFromDuration() {
-        let components = durationString.split(separator: ":").compactMap { Double($0) }
-        var totalSeconds: TimeInterval = 0
-        
-        if components.count == 3 {
-            totalSeconds = components[0] * 3600 + components[1] * 60 + components[2]
-        } else if components.count == 2 {
-            totalSeconds = components[0] * 60 + components[1]
-        } else if components.count == 1 {
-            totalSeconds = components[0]
+    private func commitDurationInput() {
+        let trimmed = durationString.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else {
+            durationString = Self.formatDurationForInput(durationSnapshot)
+            endTime = startTime.addingTimeInterval(durationSnapshot)
+            return
         }
-        
+
+        guard let totalSeconds = parseDurationInput(trimmed) else {
+            durationString = Self.formatDurationForInput(durationSnapshot)
+            endTime = startTime.addingTimeInterval(durationSnapshot)
+            return
+        }
+
         endTime = startTime.addingTimeInterval(totalSeconds)
+        durationString = Self.formatDurationForInput(totalSeconds)
+    }
+
+    private func parseDurationInput(_ input: String) -> TimeInterval? {
+        let allowedCharacters = CharacterSet.decimalDigits.union(CharacterSet(charactersIn: ":"))
+        guard input.rangeOfCharacter(from: allowedCharacters.inverted) == nil else {
+            return nil
+        }
+
+        let parts = input.split(separator: ":", omittingEmptySubsequences: false)
+        guard !parts.isEmpty, parts.count <= 3 else {
+            return nil
+        }
+
+        var values: [Int] = []
+        for part in parts {
+            guard !part.isEmpty, let value = Int(part), value >= 0 else {
+                return nil
+            }
+            values.append(value)
+        }
+
+        switch values.count {
+        case 1:
+            return TimeInterval(values[0] * 60)
+        case 2:
+            return TimeInterval(values[0] * 3600 + values[1] * 60)
+        case 3:
+            return TimeInterval(values[0] * 3600 + values[1] * 60 + values[2])
+        default:
+            return nil
+        }
+    }
+
+    private static func formatDurationForInput(_ duration: TimeInterval) -> String {
+        let totalSeconds = Int(max(0, duration))
+        let hours = totalSeconds / 3600
+        let minutes = (totalSeconds % 3600) / 60
+        let seconds = totalSeconds % 60
+        return String(format: "%d:%02d:%02d", hours, minutes, seconds)
     }
     
     private func saveChanges() {

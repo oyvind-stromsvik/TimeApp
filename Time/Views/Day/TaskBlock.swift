@@ -195,7 +195,7 @@ struct TaskBlock: View {
         guard let baseStart = dragState.startTime else { return }
         let baseEnd = dragState.endTime ?? Date()
         let newStart = snap(baseStart.addingTimeInterval((offset / hourHeight) * 3600.0))
-        if newStart < baseEnd.addingTimeInterval(-AppTheme.Timing.minimumTaskDuration) { task.startTime = newStart }
+        if newStart < baseEnd.addingTimeInterval(-manager.timeStepInterval) { task.startTime = newStart }
     }
 
     private func updateEndTime(offset: CGFloat) {
@@ -205,15 +205,14 @@ struct TaskBlock: View {
         guard let baseStart = dragState.startTime else { return }
         let baseEnd = dragState.endTime ?? Date()
         let newEnd = snap(baseEnd.addingTimeInterval((offset / hourHeight) * 3600.0))
-        if newEnd > baseStart.addingTimeInterval(AppTheme.Timing.minimumTaskDuration) {
+        if newEnd > baseStart.addingTimeInterval(manager.timeStepInterval) {
             task.endTime = newEnd
             task.isActive = false
         }
     }
 
     private func snap(_ date: Date) -> Date {
-        let interval = AppTheme.Timing.snapInterval
-        return Date(timeIntervalSince1970: round(date.timeIntervalSince1970 / interval) * interval)
+        manager.snapDate(date)
     }
 }
 

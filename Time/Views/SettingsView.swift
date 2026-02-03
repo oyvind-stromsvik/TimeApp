@@ -16,6 +16,8 @@ struct SettingsView: View {
     @AppStorage("allowSimultaneousTasks") private var allowSimultaneousTasks: Bool = true
     @AppStorage("askToStopActiveTasks") private var askToStopActiveTasks: Bool = false
     @AppStorage("appearanceMode") private var appearanceMode: String = AppearanceMode.system.rawValue
+    @AppStorage("timeStepMinutes") private var timeStepMinutes: Int = 5
+    @AppStorage("defaultNewTaskDuration") private var defaultNewTaskDuration: Double = 1800
     
     var body: some View {
         Form {
@@ -54,16 +56,32 @@ struct SettingsView: View {
             
             Section("Task Settings") {
                 Toggle("Allow Simultaneous Active Tasks", isOn: $allowSimultaneousTasks)
-                
+
                 if allowSimultaneousTasks {
                     Toggle("Ask to stop active tasks", isOn: $askToStopActiveTasks)
                         .font(.body)
                         .padding(.leading, AppTheme.Spacing.lg)
                 }
             }
+
+            Section("Timeline") {
+                Picker("Time Step", selection: $timeStepMinutes) {
+                    Text("1 minute").tag(1)
+                    Text("5 minutes").tag(5)
+                    Text("15 minutes").tag(15)
+                    Text("30 minutes").tag(30)
+                }
+
+                Picker("Default Task Duration", selection: $defaultNewTaskDuration) {
+                    Text("5 minutes").tag(300.0)
+                    Text("15 minutes").tag(900.0)
+                    Text("30 minutes").tag(1800.0)
+                    Text("1 hour").tag(3600.0)
+                }
+            }
         }
         .formStyle(.grouped)
-        .frame(width: 350, height: 300)
+        .frame(width: 350, height: 400)
     }
 }
 

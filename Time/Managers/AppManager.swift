@@ -42,6 +42,27 @@ class AppManager: NSObject, @preconcurrency UNUserNotificationCenterDelegate {
     private var askToStopActiveTasks: Bool {
         userDefaults.bool(forKey: "askToStopActiveTasks")
     }
+
+    // MARK: - Time Step Settings
+
+    var timeStepMinutes: Int {
+        let value = userDefaults.integer(forKey: "timeStepMinutes")
+        return value > 0 ? value : 5 // Default to 5 if not set
+    }
+
+    var timeStepInterval: TimeInterval {
+        TimeInterval(timeStepMinutes * 60)
+    }
+
+    var defaultNewTaskDuration: TimeInterval {
+        let value = userDefaults.double(forKey: "defaultNewTaskDuration")
+        return value > 0 ? value : 1800.0 // Default to 30 minutes
+    }
+
+    func snapDate(_ date: Date) -> Date {
+        let interval = timeStepInterval
+        return Date(timeIntervalSince1970: round(date.timeIntervalSince1970 / interval) * interval)
+    }
     
     // This property is just to trigger UI updates for active tasks
     var lastTick: Date = Date()
@@ -122,7 +143,9 @@ class AppManager: NSObject, @preconcurrency UNUserNotificationCenterDelegate {
              "aggressiveThreshold": 60.0,
              "enableAggressiveAlerts": true,
              "enableIdleDetection": true,
-             "sidebarWidth": AppTheme.sidebarDefaultWidth
+             "sidebarWidth": AppTheme.sidebarDefaultWidth,
+             "timeStepMinutes": 5,
+             "defaultNewTaskDuration": 1800.0
         ])
 
         // Load persisted sidebar width

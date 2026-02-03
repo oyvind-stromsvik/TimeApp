@@ -119,10 +119,10 @@ struct DayView: View {
         var components = calendar.dateComponents([.year, .month, .day], from: date)
         components.hour = Int(hour)
         let minute = Int((hour.truncatingRemainder(dividingBy: 1)) * 60)
-        components.minute = (minute / AppTheme.Timing.snapMinutes) * AppTheme.Timing.snapMinutes
+        components.minute = (minute / manager.timeStepMinutes) * manager.timeStepMinutes
 
         if let startTime = calendar.date(from: components) {
-            let endTime = startTime.addingTimeInterval(AppTheme.Timing.defaultNewTaskDuration)
+            let endTime = startTime.addingTimeInterval(manager.defaultNewTaskDuration)
             manager.createTask(
                 description: "New Task",
                 startTime: startTime,
