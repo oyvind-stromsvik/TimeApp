@@ -11,8 +11,10 @@ enum AppearanceMode: String, CaseIterable, Identifiable {
 struct SettingsView: View {
     @AppStorage("idleThreshold") private var idleThreshold: Double = 300
     @AppStorage("enableIdleDetection") private var enableIdleDetection: Bool = true
-    @AppStorage("aggressiveThreshold") private var aggressiveThreshold: Double = 60
-    @AppStorage("enableAggressiveAlerts") private var enableAggressiveAlerts: Bool = true
+    @AppStorage("aggressiveThreshold") private var noActiveTasksThreshold: Double = 60
+    @AppStorage("enableAggressiveAlerts") private var enableNoActiveTasksAlerts: Bool = true
+    @AppStorage("enableTrackingCheck") private var enableTrackingCheck: Bool = false
+    @AppStorage("trackingCheckInterval") private var trackingCheckInterval: Double = 1800
     @AppStorage("allowSimultaneousTasks") private var allowSimultaneousTasks: Bool = true
     @AppStorage("askToStopActiveTasks") private var askToStopActiveTasks: Bool = false
     @AppStorage("appearanceMode") private var appearanceMode: String = AppearanceMode.system.rawValue
@@ -34,7 +36,7 @@ struct SettingsView: View {
                 Toggle("Enable Idle Detection", isOn: $enableIdleDetection)
                 
                 if enableIdleDetection {
-                    Text("App will notify you if you are idle while a task is running.")
+                    Text("App will show a modal if you are idle while a task is running.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                     
@@ -42,15 +44,35 @@ struct SettingsView: View {
                 }
             }
             
-            Section("Aggressive Alerts") {
-                Toggle("Enable Aggressive Alerts", isOn: $enableAggressiveAlerts)
+            Section("No Active Tasks Alert") {
+                Toggle("Enable No Active Tasks Alert", isOn: $enableNoActiveTasksAlerts)
                 
-                if enableAggressiveAlerts {
-                    Text("App will annoy you if no task is running.")
+                if enableNoActiveTasksAlerts {
+                    Text("App will show a modal when no task is running.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                     
-                    Stepper("Alert Interval: \(Int(aggressiveThreshold / 60)) min", value: $aggressiveThreshold, in: 30...600, step: 30)
+                    Stepper("Alert Interval: \(Int(noActiveTasksThreshold / 60)) min", value: $noActiveTasksThreshold, in: 30...600, step: 30)
+                }
+            }
+
+            Section("Tracking Check-In") {
+                Toggle("Enable Tracking Check-In", isOn: $enableTrackingCheck)
+
+                if enableTrackingCheck {
+                    Text("App will periodically confirm you are tracking the right task.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+
+                    Picker("Check-In Interval", selection: $trackingCheckInterval) {
+#if DEBUG
+                        Text("1 minute").tag(60.0)
+#endif
+                        Text("15 minutes").tag(900.0)
+                        Text("30 minutes").tag(1800.0)
+                        Text("1 hour").tag(3600.0)
+                        Text("2 hours").tag(7200.0)
+                    }
                 }
             }
             
@@ -81,7 +103,7 @@ struct SettingsView: View {
             }
         }
         .formStyle(.grouped)
-        .frame(width: 350, height: 400)
+        .frame(width: 350, height: 500)
     }
 }
 

@@ -231,6 +231,16 @@ struct AppTheme {
             startPoint: .top,
             endPoint: .bottom
         )
+        
+        static let secondaryGradient = LinearGradient(
+            // Dynamic system grays -> automatically adapt to light/dark mode.
+            colors: [
+                Color(nsColor: .quaternaryLabelColor).opacity(0.55),
+                Color(nsColor: .tertiaryLabelColor).opacity(0.35)
+            ],
+            startPoint: .top,
+            endPoint: .bottom
+        )
 
         static let destructiveGradient = LinearGradient(
             colors: [AppTheme.Colors.destructive, AppTheme.Colors.destructive.opacity(0.85)],

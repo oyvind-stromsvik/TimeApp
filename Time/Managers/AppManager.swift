@@ -1,12 +1,11 @@
 import Foundation
 import SwiftUI
 import SwiftData
-import UserNotifications
 import CoreGraphics
 
 @MainActor
 @Observable
-class AppManager: NSObject, @preconcurrency UNUserNotificationCenterDelegate {
+class AppManager: NSObject {
     private var timerService: TimerService
     private var systemService: SystemService
     private var modelContext: ModelContext
@@ -14,7 +13,22 @@ class AppManager: NSObject, @preconcurrency UNUserNotificationCenterDelegate {
     
     // Track when we last notified the user about being idle
     private var lastIdleAlert: Date = Date()
-    private var lastAggressiveAlert: Date = Date()
+    private var lastNoActiveTasksAlert: Date = Date()
+    private var lastTrackingCheckAlert: Date = Date()
+
+    private var idleStart: Date?
+    private var isIdleFrozen: Bool = false
+    var idleDuration: TimeInterval = 0
+
+    enum FocusModal: String, Identifiable, Equatable {
+        case idle
+        case noActiveTasks
+        case trackingCheck
+
+        var id: String { rawValue }
+    }
+
+    var focusModal: FocusModal?
     
     // Settings from UserDefaults
     private var idleThreshold: TimeInterval {
@@ -22,17 +36,26 @@ class AppManager: NSObject, @preconcurrency UNUserNotificationCenterDelegate {
         return max(value, 60) // Clamp to minimum 1 minute
     }
     
-    private var aggressiveThreshold: TimeInterval {
+    private var noActiveTasksThreshold: TimeInterval {
         let value = userDefaults.double(forKey: "aggressiveThreshold")
         return max(value, 30) // Clamp to minimum 30 seconds
     }
     
-    private var isAggressiveAlertEnabled: Bool {
+    private var isNoActiveTasksAlertEnabled: Bool {
         userDefaults.bool(forKey: "enableAggressiveAlerts")
     }
 
     private var isIdleDetectionEnabled: Bool {
         userDefaults.bool(forKey: "enableIdleDetection")
+    }
+
+    private var trackingCheckInterval: TimeInterval {
+        let value = userDefaults.double(forKey: "trackingCheckInterval")
+        return max(value, 60) // Allow 1 minute while debugging
+    }
+
+    private var isTrackingCheckEnabled: Bool {
+        userDefaults.bool(forKey: "enableTrackingCheck")
     }
 
     private var allowSimultaneousTasks: Bool {
@@ -72,26 +95,6 @@ class AppManager: NSObject, @preconcurrency UNUserNotificationCenterDelegate {
     private(set) var pendingTaskAction: (() -> Void)?
     private(set) var onCancelAction: (() -> Void)?
 
-    // UI binding for aggressive alert
-    var showAggressiveAlert: Bool = false {
-        didSet {
-            if showAggressiveAlert {
-                NSApp.dockTile.badgeLabel = "!"
-                NSApp.dockTile.display()
-                NSApp.requestUserAttention(.criticalRequest)
-                
-                // Force windows to de-miniaturize
-                NSApp.windows.forEach { window in
-                    if window.isMiniaturized {
-                        window.deminiaturize(nil)
-                    }
-                }
-            } else {
-                NSApp.dockTile.badgeLabel = nil
-            }
-        }
-    }
-    
     // UI binding for sidebar visibility and width
     var isSidebarVisible: Bool = true
     var sidebarWidth: CGFloat {
@@ -143,6 +146,8 @@ class AppManager: NSObject, @preconcurrency UNUserNotificationCenterDelegate {
              "aggressiveThreshold": 60.0,
              "enableAggressiveAlerts": true,
              "enableIdleDetection": true,
+             "enableTrackingCheck": false,
+             "trackingCheckInterval": 1800.0,
              "sidebarWidth": AppTheme.sidebarDefaultWidth,
              "timeStepMinutes": 5,
              "defaultNewTaskDuration": 1800.0
@@ -154,30 +159,7 @@ class AppManager: NSObject, @preconcurrency UNUserNotificationCenterDelegate {
             : AppTheme.sidebarDefaultWidth
 
         super.init()
-        
-        requestNotificationPermission()
-        UNUserNotificationCenter.current().delegate = self
         startTimer()
-    }
-
-    private func requestNotificationPermission() {
-        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { granted, error in
-            if let error = error {
-                print("Error requesting notification permissions: \(error.localizedDescription)")
-            }
-        }
-    }
-    
-    // Delegate method to allow notifications while app is in foreground
-    func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification, withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
-        completionHandler([.banner, .sound])
-    }
-
-    // Handle user clicking on the notification
-    func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: @escaping () -> Void) {
-        // Bring app to front
-        NSApp.activate(ignoringOtherApps: true)
-        completionHandler()
     }
 
     private func startTimer() {
@@ -189,52 +171,128 @@ class AppManager: NSObject, @preconcurrency UNUserNotificationCenterDelegate {
         timerService.start(interval: 1.0)
     }
 
-    /**
-     Intended to annoy the user until they are actively tracking time on a task.
-     They express purpose of this app is to always track time on at least one
-     task at all points throughout the workday, ie. as long as the app is open,
-     so we want to be as annoying as possible in that regard.
-     */
-    private func checkIdleStatus() {
-        // Case 1: No active task -> Aggressively alert
-        if activeTasks.isEmpty {
-            guard isAggressiveAlertEnabled else { return }
-            
-            if Date().timeIntervalSince(lastAggressiveAlert) < aggressiveThreshold {
-                return
+    private func presentFocusModal(_ modal: FocusModal) {
+        guard focusModal == nil else { return }
+        NSApp.activate(ignoringOtherApps: true)
+        NSApp.windows.forEach { window in
+            if window.isMiniaturized {
+                window.deminiaturize(nil)
             }
-            
-            NSApp.activate(ignoringOtherApps: true)
-            showAggressiveAlert = true
-            lastAggressiveAlert = Date()
+            window.makeKeyAndOrderFront(nil)
         }
-        // Case 2: Active task -> Check for idle
-        else {
-            // Reset aggressive alert timer while tasks are active
-            // so it starts fresh when the task is stopped
-            lastAggressiveAlert = Date()
+        focusModal = modal
+    }
 
-            guard isIdleDetectionEnabled else { return }
-            guard let idleTime = systemService.getIdleTime() else { return }
-            
-            if idleTime < idleThreshold || Date().timeIntervalSince(lastIdleAlert) < idleThreshold {
-                return
+    private func beginIdleModal(idleTime: TimeInterval) {
+        idleStart = Date().addingTimeInterval(-idleTime)
+        idleDuration = idleTime
+        isIdleFrozen = false
+        presentFocusModal(.idle)
+    }
+
+    private func updateIdleDurationIfNeeded() {
+        guard focusModal == .idle, let idleStart else { return }
+        guard let idleTime = systemService.getIdleTime() else { return }
+
+        if idleTime < idleThreshold {
+            if !isIdleFrozen {
+                idleDuration = Date().timeIntervalSince(idleStart)
+                isIdleFrozen = true
             }
-            
-            sendIdleNotification()
-            lastIdleAlert = Date()
-            lastAggressiveAlert = Date()
+        } else {
+            idleDuration = max(idleDuration, idleTime)
         }
     }
-    
-    private func sendIdleNotification() {
-        let content = UNMutableNotificationContent()
-        content.title = "Are you working?"
-        content.body = "You've been idle for a while with no active task. Click here to start tracking."
-        content.sound = .default
-        
-        let request = UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: nil)
-        UNUserNotificationCenter.current().add(request)
+
+    private func checkIdleStatus() {
+        if focusModal == .idle {
+            updateIdleDurationIfNeeded()
+            return
+        }
+
+        if focusModal != nil {
+            return
+        }
+
+        var idleTime: TimeInterval?
+        if isIdleDetectionEnabled || isTrackingCheckEnabled {
+            idleTime = systemService.getIdleTime()
+        }
+
+        if activeTasks.isEmpty {
+            lastTrackingCheckAlert = Date()
+            guard isNoActiveTasksAlertEnabled else { return }
+
+            if Date().timeIntervalSince(lastNoActiveTasksAlert) < noActiveTasksThreshold {
+                return
+            }
+
+            lastNoActiveTasksAlert = Date()
+            presentFocusModal(.noActiveTasks)
+            return
+        }
+
+        lastNoActiveTasksAlert = Date()
+
+        if isIdleDetectionEnabled, let idleTime {
+            if idleTime >= idleThreshold && Date().timeIntervalSince(lastIdleAlert) >= idleThreshold {
+                lastIdleAlert = Date()
+                beginIdleModal(idleTime: idleTime)
+                return
+            }
+        }
+
+        guard isTrackingCheckEnabled else { return }
+
+        if let idleTime, idleTime >= idleThreshold {
+            return
+        }
+
+        if Date().timeIntervalSince(lastTrackingCheckAlert) >= trackingCheckInterval {
+            lastTrackingCheckAlert = Date()
+            presentFocusModal(.trackingCheck)
+        }
+    }
+
+    private func resetIdleState() {
+        idleStart = nil
+        idleDuration = 0
+        isIdleFrozen = false
+    }
+
+    private func discardIdleTime() {
+        guard idleDuration > 0 else { return }
+        let now = Date()
+        for task in activeTasks {
+            let adjustedStart = task.startTime.addingTimeInterval(idleDuration)
+            task.startTime = min(adjustedStart, now)
+        }
+        save()
+    }
+
+    func keepIdleTime() {
+        resetIdleState()
+        focusModal = nil
+        lastIdleAlert = Date()
+        lastTrackingCheckAlert = Date()
+    }
+
+    func discardIdleTimeAndContinue() {
+        discardIdleTime()
+        resetIdleState()
+        focusModal = nil
+        lastIdleAlert = Date()
+        lastTrackingCheckAlert = Date()
+    }
+
+    func dismissNoActiveTasksAlert() {
+        focusModal = nil
+        lastNoActiveTasksAlert = Date()
+    }
+
+    func dismissTrackingCheckAlert() {
+        focusModal = nil
+        lastTrackingCheckAlert = Date()
     }
     
     var previewTaskState: TaskSnapshot?
@@ -741,4 +799,3 @@ class AppManager: NSObject, @preconcurrency UNUserNotificationCenterDelegate {
         }
     }
 }
-

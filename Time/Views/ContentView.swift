@@ -158,11 +158,26 @@ struct ContentView: View {
         } message: {
             Text("You already have active tasks running. Would you like to stop them before starting the new one?")
         }
-        .overlay {
-            if bindableManager.showAggressiveAlert {
-                AggressiveAlertView {
-                    manager.showAggressiveAlert = false
+        .sheet(item: $bindableManager.focusModal) { modal in
+            switch modal {
+            case .idle:
+                IdleAlertModalView(
+                    idleDuration: manager.idleDuration,
+                    onDiscard: { manager.discardIdleTimeAndContinue() },
+                    onKeep: { manager.keepIdleTime() }
+                )
+            case .noActiveTasks:
+                NoActiveTasksModalView {
+                    manager.dismissNoActiveTasksAlert()
                 }
+            case .trackingCheck:
+                TrackingCheckModalView(
+                    onConfirm: { manager.dismissTrackingCheckAlert() },
+                    onSwitch: {
+                        manager.stopAllActiveTasks()
+                        manager.dismissTrackingCheckAlert()
+                    }
+                )
             }
         }
     }

@@ -114,6 +114,22 @@ struct AppPrimaryButtonStyle: ButtonStyle {
     }
 }
 
+struct AppSecondaryButtonStyle: ButtonStyle {
+    var cornerRadius: CGFloat = 10
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .foregroundColor(.white)
+            .padding(.vertical, 10)
+            .padding(.horizontal, 20)
+            .background(AppTheme.Gradients.secondaryGradient)
+            .cornerRadius(cornerRadius)
+            .scaleEffect(configuration.isPressed ? 0.98 : 1)
+            .opacity(configuration.isPressed ? 0.92 : 1)
+            .animation(.snappy(duration: 0.12), value: configuration.isPressed)
+    }
+}
+
 struct AppDestructiveButtonStyle: ButtonStyle {
     var cornerRadius: CGFloat = 10
 
