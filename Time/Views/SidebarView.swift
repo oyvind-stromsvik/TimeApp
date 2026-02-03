@@ -120,38 +120,228 @@ struct SidebarView: View {
     }
 }
 
+private struct TaskInlineEditor<DurationLeading: View>: View {
+    @Bindable var task: Task
+    let durationColor: Color
+    let durationFont: Font
+    let allowDurationEdit: Bool
+    let durationLeadingSpacing: CGFloat
+    let durationLeading: () -> DurationLeading
+
+    @Environment(AppManager.self) private var manager
+    @Environment(\.undoManager) private var undoManager
+    @State private var descriptionDraft: String
+    @State private var durationDraft: String
+    @State private var descriptionSnapshot: String = ""
+    @State private var durationSnapshot: TimeInterval = 0
+    @State private var isDescriptionHovering = false
+    @State private var isDurationHovering = false
+    @FocusState private var focusedField: Field?
+
+    private enum Field {
+        case description
+        case duration
+    }
+
+    init(
+        task: Task,
+        durationColor: Color,
+        durationFont: Font,
+        allowDurationEdit: Bool = true,
+        durationLeadingSpacing: CGFloat = AppTheme.Spacing.sm,
+        @ViewBuilder durationLeading: @escaping () -> DurationLeading
+    ) {
+        self.task = task
+        self.durationColor = durationColor
+        self.durationFont = durationFont
+        self.allowDurationEdit = allowDurationEdit
+        self.durationLeadingSpacing = durationLeadingSpacing
+        self.durationLeading = durationLeading
+        _descriptionDraft = State(initialValue: task.taskDescription)
+        _durationDraft = State(initialValue: task.formattedDuration)
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: AppTheme.Spacing.itemSpacing) {
+            TextField("", text: $descriptionDraft)
+                .textFieldStyle(.plain)
+                .font(AppTheme.Typography.rowPrimaryText())
+                .foregroundStyle(AppTheme.Colors.textPrimary)
+                .focused($focusedField, equals: .description)
+                .padding(.vertical, 1)
+                .padding(.horizontal, 3)
+                .background(fieldBackground(isHovering: isDescriptionHovering, isFocused: focusedField == .description))
+                .contentShape(Rectangle())
+                .onHover { hovering in
+                    isDescriptionHovering = hovering
+                }
+                .cursor(.iBeam)
+                .onSubmit {
+                    focusedField = nil
+                }
+
+            HStack(spacing: durationLeadingSpacing) {
+                durationLeading()
+
+                TextField("", text: $durationDraft)
+                    .textFieldStyle(.plain)
+                    .font(durationFont)
+                    .foregroundStyle(durationColor)
+                    .focused($focusedField, equals: .duration)
+                    .disabled(!allowDurationEdit)
+                    .padding(.vertical, 1)
+                    .padding(.horizontal, 3)
+                    .background(
+                        fieldBackground(
+                            isHovering: isDurationHovering,
+                            isFocused: focusedField == .duration,
+                            isDisabled: !allowDurationEdit
+                        )
+                    )
+                    .contentShape(Rectangle())
+                    .onHover { hovering in
+                        isDurationHovering = allowDurationEdit && hovering
+                    }
+                    .cursor(allowDurationEdit ? .iBeam : .arrow)
+                    .onSubmit {
+                        focusedField = nil
+                    }
+            }
+        }
+        .onChange(of: focusedField) { oldValue, newValue in
+            if oldValue == .description && newValue != .description {
+                commitDescription()
+            }
+            if oldValue == .duration && newValue != .duration {
+                commitDuration()
+            }
+            if newValue == .description {
+                descriptionSnapshot = task.taskDescription
+                descriptionDraft = task.taskDescription
+            }
+            if newValue == .duration {
+                durationSnapshot = task.duration
+                durationDraft = TaskDurationInput.format(durationSnapshot)
+            }
+        }
+        .onChange(of: task.taskDescription) { _, newValue in
+            guard focusedField != .description else { return }
+            descriptionDraft = newValue
+        }
+        .onChange(of: task.startTime) { _, _ in
+            refreshDurationDisplay()
+        }
+        .onChange(of: task.endTime) { _, _ in
+            refreshDurationDisplay()
+        }
+        .onChange(of: task.isActive) { _, _ in
+            refreshDurationDisplay()
+        }
+        .onChange(of: manager.lastTick) { _, _ in
+            guard task.isActive else { return }
+            refreshDurationDisplay()
+        }
+    }
+
+    private func refreshDurationDisplay() {
+        guard focusedField != .duration else { return }
+        durationDraft = task.formattedDuration
+    }
+
+    private func commitDescription() {
+        let trimmed = descriptionDraft.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else {
+            descriptionDraft = descriptionSnapshot
+            return
+        }
+
+        guard descriptionDraft != task.taskDescription else { return }
+        manager.updateTask(
+            task,
+            startTime: task.startTime,
+            endTime: task.endTime,
+            description: descriptionDraft,
+            undoManager: undoManager
+        )
+    }
+
+    private func commitDuration() {
+        guard allowDurationEdit else {
+            refreshDurationDisplay()
+            return
+        }
+
+        let trimmed = durationDraft.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else {
+            durationDraft = TaskDurationInput.format(durationSnapshot)
+            refreshDurationDisplay()
+            return
+        }
+
+        guard let totalSeconds = TaskDurationInput.parse(trimmed) else {
+            durationDraft = TaskDurationInput.format(durationSnapshot)
+            refreshDurationDisplay()
+            return
+        }
+
+        if task.isActive {
+            let newStartTime = Date().addingTimeInterval(-totalSeconds)
+            manager.updateTask(
+                task,
+                startTime: newStartTime,
+                endTime: nil,
+                description: task.taskDescription,
+                undoManager: undoManager
+            )
+        } else {
+            let newEndTime = task.startTime.addingTimeInterval(totalSeconds)
+            manager.updateTask(
+                task,
+                startTime: task.startTime,
+                endTime: newEndTime,
+                description: task.taskDescription,
+                undoManager: undoManager
+            )
+        }
+
+        refreshDurationDisplay()
+    }
+
+    private func fieldBackground(isHovering: Bool, isFocused: Bool, isDisabled: Bool = false) -> some View {
+        let isActive = (isHovering || isFocused) && !isDisabled
+        return RoundedRectangle(cornerRadius: AppTheme.CornerRadius.xs)
+            .fill(isActive ? AppTheme.Colors.tertiaryFill : .clear)
+            .overlay(
+                RoundedRectangle(cornerRadius: AppTheme.CornerRadius.xs)
+                    .strokeBorder(AppTheme.Colors.separator.opacity(isActive ? 0.45 : 0), lineWidth: 0.5)
+            )
+            .animation(AppTheme.Animation.standard, value: isActive)
+    }
+}
+
 /// An active task in the sidebar.
 struct ActiveTaskRow: View {
     @Bindable var task: Task
 
     @Environment(AppManager.self) private var manager
     @Environment(\.undoManager) private var undoManager
-    @State private var isHovering = false
 
     private var showingPopover: Bool {
         manager.popoverLocation == .sidebar(taskID: task.id)
     }
 
     var body: some View {
-        let _ = manager.lastTick
         HStack(spacing: AppTheme.Spacing.xl) {
-            VStack(alignment: .leading, spacing: AppTheme.Spacing.itemSpacing) {
-                Text(task.taskDescription)
-                    .font(AppTheme.Typography.rowPrimaryText())
-                    .foregroundStyle(AppTheme.Colors.textPrimary)
-
-                HStack(spacing: AppTheme.Spacing.sm) {
-                    Circle()
-                        .fill(AppTheme.Colors.activeTask)
-                        .frame(width: 6, height: 6)
-                        .symbolEffect(.pulse, value: manager.lastTick)
-                        .offset(x: 1)
-
-                    Text(task.formattedDuration)
-                        .font(.system(size: AppTheme.Typography.body, weight: .medium, design: .monospaced))
-                        .foregroundColor(AppTheme.Colors.activeTask)
-                        .symbolEffect(.pulse)
-                }
+            TaskInlineEditor(
+                task: task,
+                durationColor: AppTheme.Colors.activeTask,
+                durationFont: .system(size: AppTheme.Typography.body, weight: .medium, design: .monospaced)
+            ) {
+                Circle()
+                    .fill(AppTheme.Colors.activeTask)
+                    .frame(width: 6, height: 6)
+                    .symbolEffect(.pulse, value: manager.lastTick)
+                    .offset(x: 1)
             }
 
             Spacer()
@@ -188,22 +378,13 @@ struct ActiveTaskRow: View {
                             endPoint: .bottomTrailing
                         )
                     )
-
-                // Hover effect
-                RoundedRectangle(cornerRadius: AppTheme.CornerRadius.card)
-                    .fill(isHovering ? AppTheme.Colors.tertiaryFill : .clear)
             }
             .overlay(
                 RoundedRectangle(cornerRadius: AppTheme.CornerRadius.card)
-                    .strokeBorder(AppTheme.Colors.accent.opacity(isHovering ? 0.95 : 0.55), lineWidth: 1)
+                    .strokeBorder(AppTheme.Colors.accent.opacity(0.55), lineWidth: 1)
             )
             .appShadow(AppTheme.Shadows.active)
         )
-        .animation(AppTheme.Animation.standard, value: isHovering)
-        .onTapGesture {
-            manager.openPopover(for: task, from: .sidebar(taskID: task.id))
-            manager.selectTask(task)
-        }
         .popover(
             isPresented: Binding(
                 get: { showingPopover },
@@ -214,18 +395,11 @@ struct ActiveTaskRow: View {
             EditTaskView(task: task, manager: manager)
                 .presentationCompactAdaptation(.none)
         }
-        .onHover { hovering in
-            withAnimation(AppTheme.Animation.standard) {
-                isHovering = hovering
-            }
-        }
         .contextMenu {
             Button("Edit") {
                 manager.openPopover(for: task, from: .sidebar(taskID: task.id))
                 manager.selectTask(task)
             }
-            Button("Split") { manager.splitTask(task, from: .sidebar(taskID: task.id), undoManager: undoManager) }
-            Button("Duplicate") { manager.duplicateTask(task, from: .sidebar(taskID: task.id), undoManager: undoManager) }
             Divider()
             Button("Delete", role: .destructive) { manager.deleteTask(task, undoManager: undoManager) }
         }
@@ -340,12 +514,6 @@ struct TaskStackView: View {
                             .offset(x: 0, y: -4)
                             .opacity(0.25)
                     }
-
-                    // Hover effect
-                    if isHovering {
-                        RoundedRectangle(cornerRadius: AppTheme.CornerRadius.card)
-                            .fill(AppTheme.Colors.tertiaryFill)
-                    }
                 }
             )
             .overlay(
@@ -384,14 +552,13 @@ struct CompletedTaskRow: View {
 
     var body: some View {
         HStack(spacing: AppTheme.Spacing.xl) {
-            VStack(alignment: .leading, spacing: AppTheme.Spacing.itemSpacing) {
-                Text(task.taskDescription)
-                    .font(AppTheme.Typography.rowPrimaryText())
-                    .foregroundStyle(AppTheme.Colors.textPrimary)
-
-                Text(task.formattedDuration)
-                    .font(.system(size: AppTheme.Typography.body, weight: .medium, design: .monospaced))
-                    .foregroundColor(AppTheme.Colors.textSecondary)
+            TaskInlineEditor(
+                task: task,
+                durationColor: AppTheme.Colors.textSecondary,
+                durationFont: .system(size: AppTheme.Typography.body, weight: .medium, design: .monospaced),
+                durationLeadingSpacing: 0
+            ) {
+                EmptyView()
             }
 
             Spacer()
@@ -424,7 +591,7 @@ struct CompletedTaskRow: View {
                 if isInStack {
                     // Simple background for tasks in stack
                     RoundedRectangle(cornerRadius: AppTheme.CornerRadius.card)
-                        .fill(isHovering ? AppTheme.Colors.tertiaryFill : AppTheme.Colors.cardBackground.opacity(0.5))
+                        .fill(AppTheme.Colors.cardBackground.opacity(0.5))
                 } else {
                     // Card-like appearance for standalone tasks
                     RoundedRectangle(cornerRadius: AppTheme.CornerRadius.card)
@@ -434,18 +601,10 @@ struct CompletedTaskRow: View {
                                 .strokeBorder(AppTheme.Colors.separator.opacity(0.5), lineWidth: 0.5)
                         )
                         .appShadow(AppTheme.Shadows.soft)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: AppTheme.CornerRadius.card)
-                                .fill(isHovering ? AppTheme.Colors.tertiaryFill : .clear)
-                        )
                 }
             }
         )
         .animation(AppTheme.Animation.standard, value: isHovering)
-        .onTapGesture {
-            manager.openPopover(for: task, from: .sidebar(taskID: task.id))
-            manager.selectTask(task)
-        }
         .popover(
             isPresented: Binding(
                 get: { showingPopover },
@@ -466,8 +625,6 @@ struct CompletedTaskRow: View {
                 manager.openPopover(for: task, from: .sidebar(taskID: task.id))
                 manager.selectTask(task)
             }
-            Button("Split") { manager.splitTask(task, from: .sidebar(taskID: task.id), undoManager: undoManager) }
-            Button("Duplicate") { manager.duplicateTask(task, from: .sidebar(taskID: task.id), undoManager: undoManager) }
             Divider()
             Button("Delete", role: .destructive) { manager.deleteTask(task, undoManager: undoManager) }
         }
@@ -492,4 +649,3 @@ struct CompletedTaskRow: View {
         .modelContainer(container)
         .environment(manager)
 }
-
