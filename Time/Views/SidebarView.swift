@@ -6,8 +6,10 @@ struct SidebarView: View {
 
     @Environment(\.modelContext) private var modelContext
     @Environment(AppManager.self) private var manager
+    @Environment(\.undoManager) private var undoManager
     @Query(filter: #Predicate<Task> { $0.isActive == true }, sort: \Task.startTime) private var activeTasks: [Task]
     @Query(sort: \Task.startTime, order: .reverse) private var allTasks: [Task]
+    @State private var newTaskDescription = ""
 
     private var selectedDayTasks: [Task] {
         let calendar = Calendar.current
@@ -73,6 +75,28 @@ struct SidebarView: View {
     
     var body: some View {
         VStack(spacing: 0) {
+            HStack(spacing: AppTheme.Spacing.md) {
+                TextField("What are you working on?", text: $newTaskDescription)
+                    .textFieldStyle(.plain)
+                    .appCardField(padding: AppTheme.Spacing.md, cornerRadius: AppTheme.CornerRadius.md)
+                    .frame(maxWidth: .infinity)
+                    .onSubmit(startTask)
+
+                Button(action: startTask) {
+                    AppCircleIcon(
+                        systemName: "play.fill",
+                        size: 28,
+                        iconSize: 11,
+                        background: AppTheme.Gradients.accentGradient
+                    )
+                }
+                .buttonStyle(.plain)
+            }
+            .padding(.horizontal, AppTheme.Spacing.lg)
+            .padding(.vertical, AppTheme.Spacing.md)
+            .background(.regularMaterial)
+            .overlay(alignment: .bottom) { Divider() }
+
             ScrollViewReader { proxy in
                 List {
                     // Hidden top target for scrolling
@@ -147,6 +171,12 @@ struct SidebarView: View {
             }
         }
         .background(AppTheme.Surfaces.sidebar)
+    }
+
+    private func startTask() {
+        let description = newTaskDescription.isEmpty ? "New task" : newTaskDescription
+        manager.addNewTask(description: description, startTime: Date(), endTime: nil, isActive: true, undoManager: undoManager)
+        newTaskDescription = ""
     }
 }
 

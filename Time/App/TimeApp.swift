@@ -41,6 +41,7 @@ struct TimeApp: App {
             ContentView()
                 .environment(manager)
                 .preferredColorScheme(colorScheme)
+                .frame(minWidth: 525)
         }
         .modelContainer(sharedModelContainer)
         

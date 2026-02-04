@@ -4,9 +4,7 @@ import SwiftData
 struct ContentView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(AppManager.self) private var manager
-    @Environment(\.undoManager) private var undoManager
     @State private var selectedDate = Date()
-    @State private var newTaskDescription = ""
     @State private var hourHeight: CGFloat = AppTheme.Timeline.defaultHourHeight
     @AppStorage("allowSimultaneousTasks") private var allowSimultaneousTasks: Bool = true
 
@@ -14,79 +12,6 @@ struct ContentView: View {
         @Bindable var bindableManager = manager
 
         VStack(spacing: 0) {
-            // Secondary Toolbar - spans full width over sidebar
-            HStack(spacing: AppTheme.Spacing.xxxl) {
-                // Date Navigation
-                HStack(spacing: 1) {
-                    Button {
-                        selectedDate = previousDay(from: selectedDate)
-                    } label: {
-                        Image(systemName: "chevron.left")
-                            .imageScale(.medium)
-                            .frame(width: 28, height: 26)
-                    }
-
-                    Divider().frame(height: AppTheme.Spacing.xxl)
-
-                    Button {
-                        selectedDate = Date()
-                    } label: {
-                        Text("Today")
-                            .font(AppTheme.Typography.rowPrimaryText())
-                            .frame(height: 26)
-                            .padding(.horizontal, AppTheme.Spacing.md)
-                    }
-
-                    Divider().frame(height: AppTheme.Spacing.xxl)
-
-                    Button {
-                        selectedDate = nextDay(from: selectedDate)
-                    } label: {
-                        Image(systemName: "chevron.right")
-                            .imageScale(.medium)
-                            .frame(width: 28, height: 26)
-                    }
-                }
-                .buttonStyle(.borderless)
-                .background(RoundedRectangle(cornerRadius: AppTheme.CornerRadius.md).fill(Color.secondary.opacity(0.1)))
-
-                Text(formattedDateForHeader(selectedDate))
-                    .font(.system(size: AppTheme.Typography.headline, weight: .semibold))
-
-                Spacer()
-
-                // Zoom Controls
-                HStack(spacing: AppTheme.Spacing.lg) {
-                    Button {
-                        withAnimation(AppTheme.Animation.standard) {
-                            hourHeight = max(AppTheme.Timeline.minHourHeight, hourHeight - AppTheme.Timeline.hourHeightStep)
-                        }
-                    } label: {
-                        Image(systemName: "minus.magnifyingglass")
-                    }
-                    .buttonStyle(.borderless)
-                    .disabled(hourHeight <= AppTheme.Timeline.minHourHeight)
-
-                    Slider(value: $hourHeight, in: AppTheme.Timeline.minHourHeight...AppTheme.Timeline.maxHourHeight)
-                        .frame(width: 100)
-                        .controlSize(.mini)
-
-                    Button {
-                        withAnimation(AppTheme.Animation.standard) {
-                            hourHeight = min(AppTheme.Timeline.maxHourHeight, hourHeight + AppTheme.Timeline.hourHeightStep)
-                        }
-                    } label: {
-                        Image(systemName: "plus.magnifyingglass")
-                    }
-                    .buttonStyle(.borderless)
-                    .disabled(hourHeight >= AppTheme.Timeline.maxHourHeight)
-                }
-            }
-            .padding(.horizontal, AppTheme.Spacing.xxl)
-            .padding(.vertical, AppTheme.Spacing.md)
-            .background(.regularMaterial)
-            .overlay(alignment: .bottom) { Divider() }
-
             HStack(spacing: 0) {
                 SidebarContainer(
                     isVisible: Binding(
@@ -108,6 +33,7 @@ struct ContentView: View {
                     .frame(minWidth: 100, idealWidth: AppTheme.mainWidth, maxWidth: .infinity)
             }
         }
+        .background(WindowTitleHider())
         .coordinateSpace(name: "contentArea")
         .toolbar {
             ToolbarItem(placement: .navigation) {
@@ -116,28 +42,79 @@ struct ContentView: View {
                         manager.isSidebarVisible.toggle()
                     }
                 } label: {
-                    Label("Toggle Sidebar", systemImage: "sidebar.left")
+                    Image(systemName: "sidebar.left")
+                        .font(.system(size: 18, weight: .light))
                 }
+                .padding(.top, 4)
                 .keyboardShortcut("0", modifiers: .command)
             }
 
             ToolbarItem(placement: .principal) {
-                HStack(spacing: AppTheme.Spacing.md) {
-                    TextField("What are you working on?", text: $newTaskDescription)
-                        .textFieldStyle(.plain)
-                        .appCardField(padding: AppTheme.Spacing.md, cornerRadius: AppTheme.CornerRadius.md)
-                        .frame(width: 300)
-                        .onSubmit(startTask)
+                HStack {
+                    // Date Navigation
+                    HStack(spacing: 1) {
+                        Button {
+                            selectedDate = previousDay(from: selectedDate)
+                        } label: {
+                            Image(systemName: "chevron.left")
+                                .imageScale(.medium)
+                                .frame(width: 28, height: 26)
+                        }
 
-                    Button(action: startTask) {
-                        AppCircleIcon(
-                            systemName: "play.fill",
-                            size: 28,
-                            iconSize: 11,
-                            background: AppTheme.Gradients.accentGradient
-                        )
+                        Divider().frame(height: AppTheme.Spacing.xxl)
+
+                        Button {
+                            selectedDate = Date()
+                        } label: {
+                            Text("Today")
+                                .font(AppTheme.Typography.rowPrimaryText())
+                                .frame(height: 26)
+                                .padding(.horizontal, AppTheme.Spacing.md)
+                        }
+
+                        Divider().frame(height: AppTheme.Spacing.xxl)
+
+                        Button {
+                            selectedDate = nextDay(from: selectedDate)
+                        } label: {
+                            Image(systemName: "chevron.right")
+                                .imageScale(.medium)
+                                .frame(width: 28, height: 26)
+                        }
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(.borderless)
+                    .background(RoundedRectangle(cornerRadius: AppTheme.CornerRadius.md).fill(Color.secondary.opacity(0.1)))
+
+                    Text(formattedDateForHeader(selectedDate))
+                        .font(.system(size: AppTheme.Typography.callout))
+                        .frame(minWidth: 120)
+
+                    // Zoom Controls
+                    HStack(spacing: AppTheme.Spacing.lg) {
+                        Button {
+                            withAnimation(AppTheme.Animation.standard) {
+                                hourHeight = max(AppTheme.Timeline.minHourHeight, hourHeight - AppTheme.Timeline.hourHeightStep)
+                            }
+                        } label: {
+                            Image(systemName: "minus.magnifyingglass")
+                        }
+                        .buttonStyle(.borderless)
+                        .disabled(hourHeight <= AppTheme.Timeline.minHourHeight)
+
+                        Slider(value: $hourHeight, in: AppTheme.Timeline.minHourHeight...AppTheme.Timeline.maxHourHeight)
+                            .frame(width: 80)
+                            .controlSize(.mini)
+
+                        Button {
+                            withAnimation(AppTheme.Animation.standard) {
+                                hourHeight = min(AppTheme.Timeline.maxHourHeight, hourHeight + AppTheme.Timeline.hourHeightStep)
+                            }
+                        } label: {
+                            Image(systemName: "plus.magnifyingglass")
+                        }
+                        .buttonStyle(.borderless)
+                        .disabled(hourHeight >= AppTheme.Timeline.maxHourHeight)
+                    }
                 }
             }
         }
@@ -183,12 +160,6 @@ struct ContentView: View {
         }
     }
 
-    private func startTask() {
-        let description = newTaskDescription.isEmpty ? "New task" : newTaskDescription
-        manager.addNewTask(description: description, startTime: Date(), endTime: nil, isActive: true, undoManager: undoManager)
-        newTaskDescription = ""
-    }
-
     private func previousDay(from date: Date) -> Date {
         Calendar.current.date(byAdding: .day, value: -1, to: date) ?? date
     }
@@ -202,6 +173,30 @@ struct ContentView: View {
         formatter.locale = .current
         formatter.setLocalizedDateFormatFromTemplate("EEE, MMM d")
         return formatter.string(from: date)
+    }
+}
+
+private struct WindowTitleHider: NSViewRepresentable {
+    func makeNSView(context: Context) -> NSView {
+        let view = NSView()
+        configureWindow(for: view)
+        return view
+    }
+
+    func updateNSView(_ nsView: NSView, context: Context) {
+        configureWindow(for: nsView)
+    }
+
+    private func configureWindow(for view: NSView) {
+        DispatchQueue.main.async {
+            guard let window = view.window else { return }
+            if window.titleVisibility != .hidden {
+                window.titleVisibility = .hidden
+            }
+            if window.title != "" {
+                window.title = ""
+            }
+        }
     }
 }
 
