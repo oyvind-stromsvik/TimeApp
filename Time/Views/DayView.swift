@@ -79,19 +79,6 @@ struct DayView: View {
                 proxy.scrollTo(max(0, hour - AppTheme.Timeline.initialScrollHourOffset), anchor: .top)
             }
         }
-        .toolbar {
-            ToolbarItem(placement: .status) {
-                HStack(spacing: AppTheme.Spacing.sm) {
-                    let _ = manager.lastTick
-                    Image(systemName: "clock")
-                        .foregroundStyle(.secondary)
-                    Text(totalTimeFormatted)
-                        .font(.system(size: AppTheme.Typography.bodyEmphasized, weight: .semibold, design: .monospaced))
-                        .foregroundStyle(AppTheme.Colors.textPrimary)
-                }
-                .padding(.horizontal, AppTheme.Spacing.sm)
-            }
-        }
         .onChange(of: manager.selectedTask) { oldValue, newValue in
             if oldValue != nil && newValue == nil {
                 popoverJustClosed = true
@@ -101,14 +88,6 @@ struct DayView: View {
             }
         }
         .unsavedChangesAlert(manager: manager)
-    }
-    
-    private var totalTimeFormatted: String {
-        _ = manager.lastTick
-        let totalSeconds = filteredTasks.reduce(0) { $0 + $1.duration }
-        let hours = Int(totalSeconds) / 3600
-        let minutes = Int(totalSeconds) % 3600 / 60
-        return String(format: "%dh %dm", hours, minutes)
     }
     
     private func createTaskAtPosition(location: CGPoint) {

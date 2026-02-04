@@ -19,6 +19,17 @@ struct SidebarView: View {
         }
     }
 
+    private var trackedDayTasks: [Task] {
+        let calendar = Calendar.current
+        let startOfDay = calendar.startOfDay(for: selectedDate)
+        let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay)!
+
+        return allTasks.filter { task in
+            let taskEnd = task.endTime ?? .distantFuture
+            return task.startTime < endOfDay && taskEnd >= startOfDay
+        }
+    }
+
     private struct TaskGroup: Identifiable {
         var id: String { name }
         let name: String
@@ -50,6 +61,14 @@ struct SidebarView: View {
             formatter.dateFormat = "MMM d"
             return formatter.string(from: selectedDate).uppercased()
         }
+    }
+
+    private var totalTimeFormatted: String {
+        _ = manager.lastTick
+        let totalSeconds = trackedDayTasks.reduce(0) { $0 + $1.duration }
+        let hours = Int(totalSeconds) / 3600
+        let minutes = Int(totalSeconds) % 3600 / 60
+        return String(format: "%dh %dm", hours, minutes)
     }
     
     var body: some View {
@@ -91,20 +110,31 @@ struct SidebarView: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
 
-                if !selectedDayTasks.isEmpty {
-                    Section {
-                        ForEach(sortedTaskGroups) { group in
-                            if group.tasks.count > 1 {
-                                TaskStackView(tasks: group.tasks)
-                            } else if let task = group.tasks.first {
-                                CompletedTaskRow(task: task)
-                            }
+                Section {
+                    ForEach(sortedTaskGroups) { group in
+                        if group.tasks.count > 1 {
+                            TaskStackView(tasks: group.tasks)
+                        } else if let task = group.tasks.first {
+                            CompletedTaskRow(task: task)
                         }
-                    } header: {
+                    }
+                } header: {
+                    HStack(spacing: AppTheme.Spacing.sm) {
                         Text(tasksHeaderTitle)
                             .appSectionHeader()
-                            .padding(.vertical, AppTheme.Spacing.md)
+
+                        Spacer()
+
+                        HStack(spacing: AppTheme.Spacing.xs) {
+                            Image(systemName: "clock")
+                                .font(AppTheme.Typography.sectionHeader())
+                                .foregroundStyle(.secondary)
+                            Text(totalTimeFormatted)
+                                .appSectionHeader()
+                        }
                     }
+                    .padding(.trailing, AppTheme.Spacing.xxl)
+                    .padding(.vertical, AppTheme.Spacing.md)
                 }
                 }
                 .listStyle(.sidebar)
