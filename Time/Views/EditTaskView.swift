@@ -13,8 +13,6 @@ struct EditTaskView: View {
     @State private var startTime: Date
     @State private var endTime: Date
     @State private var isActive: Bool
-    @State private var startSeconds: Int
-    @State private var endSeconds: Int
     @State private var durationString: String = ""
     @State private var showingDiscardAlert = false
     @State private var previousEndTime: Date?
@@ -25,14 +23,6 @@ struct EditTaskView: View {
     private let originalStartTime: Date
     private let originalEndTime: Date
     private let originalIsActive: Bool
-    private static let secondsFormatter: NumberFormatter = {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .none
-        formatter.minimum = 0
-        formatter.maximum = 59
-        formatter.minimumIntegerDigits = 2
-        return formatter
-    }()
 
     init(task: Task, manager: AppManager) {
         self.task = task
@@ -41,8 +31,6 @@ struct EditTaskView: View {
         self._startTime = State(initialValue: task.startTime)
         self._endTime = State(initialValue: task.endTime ?? Date())
         self._isActive = State(initialValue: task.isActive)
-        self._startSeconds = State(initialValue: Calendar.current.component(.second, from: task.startTime))
-        self._endSeconds = State(initialValue: Calendar.current.component(.second, from: task.endTime ?? Date()))
 
         self._durationString = State(initialValue: TaskDurationInput.format(task.duration))
 
@@ -91,7 +79,7 @@ struct EditTaskView: View {
                         TextField("What are you working on?", text: $taskDescription)
                             .textFieldStyle(.plain)
                             .font(.system(size: AppTheme.Typography.headline))
-                            .appCardField()
+                            .editTaskField()
                             .onSubmit(saveChanges)
                     }
 
@@ -100,87 +88,44 @@ struct EditTaskView: View {
                         Label("DURATION", systemImage: "clock")
                             .appSectionHeader()
 
-                        TextField("0:00:00", text: $durationString)
-                            .textFieldStyle(.plain)
-                            .font(AppTheme.Typography.durationDisplay())
-                            .disabled(isActive)
-                            .appCardField(disabledStyle: isActive)
-                            .focused($isDurationFocused)
-                            .onChange(of: isDurationFocused) { _, focused in
-                                if focused {
-                                    durationSnapshot = endTime.timeIntervalSince(startTime)
-                                } else {
-                                    commitDurationInput()
+                        HStack(spacing: AppTheme.Spacing.sm) {
+                            DatePicker("", selection: $startTime, displayedComponents: .hourAndMinute)
+                                .datePickerStyle(.stepperField)
+                                .frame(maxWidth: .infinity)
+                                .onChange(of: startTime) { _, _ in
+                                    updateDurationFromTimes()
                                 }
-                            }
-                            .onSubmit {
-                                commitDurationInput()
-                                saveChanges()
-                            }
-                        HStack(spacing: AppTheme.Spacing.lg) {
-                            HStack(spacing: AppTheme.Spacing.xs) {
-                                DatePicker("", selection: $startTime, displayedComponents: .hourAndMinute)
-                                    .datePickerStyle(.stepperField)
-                                    .frame(maxWidth: .infinity)
-                                    .onChange(of: startTime) { _, newValue in
-                                        startSeconds = Calendar.current.component(.second, from: newValue)
-                                        updateDurationFromTimes()
+                                .editTaskField(padding: AppTheme.Spacing.xs, disabledStyle: isActive)
+
+                            TextField("0:00:00", text: $durationString)
+                                .textFieldStyle(.plain)
+                                .font(.system(size: AppTheme.Typography.headline, weight: .semibold, design: .monospaced))
+                                .multilineTextAlignment(.center)
+                                .frame(width: 88, height: 16)
+                                .layoutPriority(1)
+                                .disabled(isActive)
+                                .editTaskField(padding: AppTheme.Spacing.md, disabledStyle: isActive)
+                                .focused($isDurationFocused)
+                                .onChange(of: isDurationFocused) { _, focused in
+                                    if focused {
+                                        durationSnapshot = endTime.timeIntervalSince(startTime)
+                                    } else {
+                                        commitDurationInput()
                                     }
-                                    .appCardField(padding: AppTheme.Spacing.xs, disabledStyle: isActive)
+                                }
+                                .onSubmit {
+                                    commitDurationInput()
+                                    saveChanges()
+                                }
 
-                                Text(":")
-                                    .font(AppTheme.Typography.rowSecondaryText())
-                                    .foregroundStyle(AppTheme.Colors.textSecondary.opacity(AppTheme.Opacity.secondaryTextMedium))
-
-                                TextField("", value: $startSeconds, formatter: Self.secondsFormatter)
-                                    .textFieldStyle(.plain)
-                                    .multilineTextAlignment(.center)
-                                    .frame(width: 32)
-                                    .onChange(of: startSeconds) { _, newValue in
-                                        let clamped = min(max(newValue, 0), 59)
-                                        if clamped != newValue {
-                                            startSeconds = clamped
-                                            return
-                                        }
-                                        startTime = settingSeconds(clamped, on: startTime)
-                                    }
-                                    .appCardField(padding: AppTheme.Spacing.xs, disabledStyle: isActive)
-                            }
-
-                            Image(systemName: "arrow.right")
-                                .font(.system(size: AppTheme.Typography.callout, weight: .bold))
-                                .foregroundColor(AppTheme.Colors.textSecondary.opacity(AppTheme.Opacity.secondaryTextMedium))
-
-                            HStack(spacing: AppTheme.Spacing.xs) {
-                                DatePicker("", selection: $endTime, displayedComponents: .hourAndMinute)
-                                    .datePickerStyle(.stepperField)
-                                    .frame(maxWidth: .infinity)
-                                    .disabled(isActive)
-                                    .onChange(of: endTime) { _, newValue in
-                                        endSeconds = Calendar.current.component(.second, from: newValue)
-                                        updateDurationFromTimes()
-                                    }
-                                    .appCardField(padding: AppTheme.Spacing.xs, disabledStyle: isActive)
-
-                                Text(":")
-                                    .font(AppTheme.Typography.rowSecondaryText())
-                                    .foregroundStyle(AppTheme.Colors.textSecondary.opacity(AppTheme.Opacity.secondaryTextMedium))
-
-                                TextField("", value: $endSeconds, formatter: Self.secondsFormatter)
-                                    .textFieldStyle(.plain)
-                                    .multilineTextAlignment(.center)
-                                    .frame(width: 32)
-                                    .disabled(isActive)
-                                    .onChange(of: endSeconds) { _, newValue in
-                                        let clamped = min(max(newValue, 0), 59)
-                                        if clamped != newValue {
-                                            endSeconds = clamped
-                                            return
-                                        }
-                                        endTime = settingSeconds(clamped, on: endTime)
-                                    }
-                                    .appCardField(padding: AppTheme.Spacing.xs, disabledStyle: isActive)
-                            }
+                            DatePicker("", selection: $endTime, displayedComponents: .hourAndMinute)
+                                .datePickerStyle(.stepperField)
+                                .frame(maxWidth: .infinity)
+                                .disabled(isActive)
+                                .onChange(of: endTime) { _, _ in
+                                    updateDurationFromTimes()
+                                }
+                                .editTaskField(padding: AppTheme.Spacing.xs, disabledStyle: isActive)
                         }
                         .onKeyPress(.return) {
                             saveChanges()
@@ -246,18 +191,10 @@ struct EditTaskView: View {
             updatePreview()
         }
         .onChange(of: startTime) {
-            let seconds = Calendar.current.component(.second, from: startTime)
-            if startSeconds != seconds {
-                startSeconds = seconds
-            }
             manager.hasUnsavedChanges = hasUnsavedChanges
             updatePreview()
         }
         .onChange(of: endTime) {
-            let seconds = Calendar.current.component(.second, from: endTime)
-            if endSeconds != seconds {
-                endSeconds = seconds
-            }
             manager.hasUnsavedChanges = hasUnsavedChanges
             updatePreview()
         }
@@ -295,10 +232,6 @@ struct EditTaskView: View {
         durationString = TaskDurationInput.format(duration)
     }
 
-    private func settingSeconds(_ seconds: Int, on date: Date) -> Date {
-        Calendar.current.date(bySetting: .second, value: seconds, of: date) ?? date
-    }
-    
     private func updatePreview() {
         manager.previewTaskState = AppManager.TaskSnapshot(
             id: task.id,
@@ -367,4 +300,30 @@ struct EditTaskViewPreview: View {
 
 #Preview {
     EditTaskViewPreview()
+}
+
+private struct EditTaskFieldModifier: ViewModifier {
+    let padding: CGFloat
+    let isDisabledStyle: Bool
+
+    func body(content: Content) -> some View {
+        let background = isDisabledStyle
+            ? AppTheme.Colors.fieldDisabledBackground.opacity(0.8)
+            : AppTheme.Colors.fieldDisabledBackground
+
+        content
+            .padding(padding)
+            .background(background)
+            .cornerRadius(AppTheme.CornerRadius.field)
+            .overlay(
+                RoundedRectangle(cornerRadius: AppTheme.CornerRadius.field)
+                    .stroke(AppTheme.Colors.fieldBorder.opacity(0.9), lineWidth: 1)
+            )
+    }
+}
+
+private extension View {
+    func editTaskField(padding: CGFloat = AppTheme.Spacing.lg, disabledStyle: Bool = false) -> some View {
+        modifier(EditTaskFieldModifier(padding: padding, isDisabledStyle: disabledStyle))
+    }
 }
