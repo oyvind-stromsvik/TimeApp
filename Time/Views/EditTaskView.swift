@@ -43,10 +43,14 @@ struct EditTaskView: View {
     private var hasUnsavedChanges: Bool {
         // For active tasks, ignore endTime since it's managed by the system (current time)
         let endTimeChanged = !isActive && !originalIsActive && abs(endTime.timeIntervalSince(originalEndTime)) > 1
+        let trimmedDuration = durationString.trimmingCharacters(in: .whitespacesAndNewlines)
+        let formattedDuration = TaskDurationInput.format(endTime.timeIntervalSince(startTime))
+        let durationChanged = !isActive && trimmedDuration != formattedDuration
         
         return taskDescription != originalDescription ||
                abs(startTime.timeIntervalSince(originalStartTime)) > 1 ||
                endTimeChanged ||
+               durationChanged ||
                isActive != originalIsActive
     }
 
@@ -109,8 +113,6 @@ struct EditTaskView: View {
                                 .onChange(of: isDurationFocused) { _, focused in
                                     if focused {
                                         durationSnapshot = endTime.timeIntervalSince(startTime)
-                                    } else {
-                                        commitDurationInput()
                                     }
                                 }
                                 .onSubmit {
@@ -187,18 +189,26 @@ struct EditTaskView: View {
             Text("You have unsaved changes. Would you like to save or discard them?")
         }
         .onChange(of: taskDescription) {
+            guard manager.popoverLocation != .none else { return }
             manager.hasUnsavedChanges = hasUnsavedChanges
             updatePreview()
         }
+        .onChange(of: durationString) { _, _ in
+            guard manager.popoverLocation != .none else { return }
+            manager.hasUnsavedChanges = hasUnsavedChanges
+        }
         .onChange(of: startTime) {
+            guard manager.popoverLocation != .none else { return }
             manager.hasUnsavedChanges = hasUnsavedChanges
             updatePreview()
         }
         .onChange(of: endTime) {
+            guard manager.popoverLocation != .none else { return }
             manager.hasUnsavedChanges = hasUnsavedChanges
             updatePreview()
         }
         .onChange(of: isActive) { _, newValue in
+            guard manager.popoverLocation != .none else { return }
             if newValue {
                 // Task is becoming active
                 previousEndTime = endTime // Save current end time
@@ -265,6 +275,13 @@ struct EditTaskView: View {
     }
     
     private func saveChanges() {
+        if !isActive {
+            let currentDuration = endTime.timeIntervalSince(startTime)
+            let formattedCurrent = TaskDurationInput.format(currentDuration)
+            if durationString.trimmingCharacters(in: .whitespacesAndNewlines) != formattedCurrent || isDurationFocused {
+                commitDurationInput()
+            }
+        }
         manager.updateTask(
             task,
             startTime: startTime,

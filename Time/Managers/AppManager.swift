@@ -131,6 +131,7 @@ class AppManager: NSObject {
         print("Close popover")
         popoverLocation = .none
         hasUnsavedChanges = false
+        previewTaskState = nil
     }
 
     init(modelContext: ModelContext, 
@@ -470,14 +471,15 @@ class AppManager: NSObject {
             showingDiscardAlert = true
         }
         else {
-            selectTask(nil);
+            closePopover()
+            selectTask(nil)
         }
     }
 
     func discardChangesAndDeselect() {
         print("Discard changes and deselect task")
-        hasUnsavedChanges = false
-        selectTask(nil);
+        closePopover()
+        selectTask(nil)
     }
 
     private func applySnapshot(_ snapshot: TaskSnapshot, to task: Task) {
