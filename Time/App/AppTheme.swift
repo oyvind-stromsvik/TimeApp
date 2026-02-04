@@ -1,4 +1,5 @@
 import SwiftUI
+import AppKit
 
 struct AppTheme {
     static let cardCornerRadius: CGFloat = 5
@@ -64,7 +65,17 @@ struct AppTheme {
         static let hourLineOffsetX: CGFloat = -50
 
         /// Layout tweaks.
-        static let minTaskHeight: CGFloat = 24
+        private static func lineHeight(for font: NSFont) -> CGFloat {
+            NSLayoutManager().defaultLineHeight(for: font)
+        }
+
+        static let minTaskHeight: CGFloat = {
+            let descriptionLineHeight = lineHeight(for: NSFont.systemFont(ofSize: Typography.bodyEmphasized))
+            let durationLineHeight = lineHeight(for: NSFont.systemFont(ofSize: Typography.caption2, weight: .medium))
+            let contentHeight = (descriptionLineHeight * 2) + durationLineHeight + Spacing.xxs
+            let paddingHeight = Spacing.cardPaddingVertical * 2
+            return ceil(contentHeight + paddingHeight)
+        }()
 
         /// On appear, scroll to (currentHour - this offset).
         static let initialScrollHourOffset: Int = 1

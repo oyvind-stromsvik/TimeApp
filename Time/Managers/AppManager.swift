@@ -268,7 +268,7 @@ class AppManager: NSObject {
         let now = Date()
         for task in activeTasks {
             let adjustedStart = task.startTime.addingTimeInterval(idleDuration)
-            task.startTime = min(adjustedStart, now)
+            task.startTime = sanitizedStartTime(min(adjustedStart, now))
         }
         save()
     }
@@ -277,23 +277,29 @@ class AppManager: NSObject {
         lastTrackingCheckAlert = Date()
     }
 
-    private func roundedUpToMinute(_ date: Date) -> Date {
-        let seconds = date.timeIntervalSinceReferenceDate
-        let roundedSeconds = ceil(seconds / 60.0) * 60.0
-        return Date(timeIntervalSinceReferenceDate: roundedSeconds)
+    private func stripSubseconds(_ date: Date) -> Date {
+        let seconds = floor(date.timeIntervalSinceReferenceDate)
+        return Date(timeIntervalSinceReferenceDate: seconds)
     }
 
-    private func roundedDownToMinute(_ date: Date) -> Date {
-        let seconds = date.timeIntervalSinceReferenceDate
-        let roundedSeconds = floor(seconds / 60.0) * 60.0
-        return Date(timeIntervalSinceReferenceDate: roundedSeconds)
+    private func sanitizedStartTime(_ date: Date) -> Date {
+        stripSubseconds(date)
+    }
+
+    private func sanitizedEndTime(_ date: Date?) -> Date? {
+        date.map(stripSubseconds)
+    }
+
+    private func sanitizedTimes(start: Date, end: Date?) -> (Date, Date?) {
+        (sanitizedStartTime(start), sanitizedEndTime(end))
     }
 
     private func snappedStartTimeForNewActiveTask(_ startTime: Date) -> Date {
-        let roundedStart = roundedDownToMinute(startTime)
-        guard !allowSimultaneousTasks else { return roundedStart }
-        return max(roundedStart, lastStopTime)
+        let sanitized = sanitizedStartTime(startTime)
+        guard !allowSimultaneousTasks else { return sanitized }
+        return max(sanitized, lastStopTime)
     }
+
 
     func keepIdleTime() {
         resetIdleState()
@@ -345,13 +351,6 @@ class AppManager: NSObject {
             self.isActive = task.isActive
         }
 
-        func apply(to task: Task) {
-            task.id = id
-            task.taskDescription = taskDescription
-            task.startTime = startTime
-            task.endTime = endTime
-            task.isActive = isActive
-        }
     }
 
     private func fetchTask(id: UUID) -> Task? {
@@ -481,6 +480,15 @@ class AppManager: NSObject {
         selectTask(nil);
     }
 
+    private func applySnapshot(_ snapshot: TaskSnapshot, to task: Task) {
+        let (sanitizedStart, sanitizedEnd) = sanitizedTimes(start: snapshot.startTime, end: snapshot.endTime)
+        task.id = snapshot.id
+        task.taskDescription = snapshot.taskDescription
+        task.startTime = sanitizedStart
+        task.endTime = sanitizedEnd
+        task.isActive = snapshot.isActive
+    }
+
     private func apply(snapshot: TaskSnapshot, undoManager: UndoManager?, actionName: String) {
         guard let task = fetchTask(id: snapshot.id) else { return }
 
@@ -492,7 +500,7 @@ class AppManager: NSObject {
             undoManager.setActionName(actionName)
         }
 
-        snapshot.apply(to: task)
+        applySnapshot(snapshot, to: task)
         save()
     }
 
@@ -552,18 +560,19 @@ class AppManager: NSObject {
             undoManager.setActionName(actionName)
         }
 
-        task.startTime = startTime
-        task.endTime = endTime
+        let (sanitizedStart, sanitizedEnd) = sanitizedTimes(start: startTime, end: endTime)
+        task.startTime = sanitizedStart
+        task.endTime = sanitizedEnd
         task.isActive = isActive
         save()
     }
 
     func stopTask(_ task: Task, undoManager: UndoManager? = nil) {
         let before = TaskSnapshot(task)
-        let roundedEndTime = roundedUpToMinute(Date())
-        task.endTime = roundedEndTime
+        let endTime = sanitizedStartTime(Date())
+        task.endTime = endTime
         task.isActive = false
-        lastStopTime = max(lastStopTime, roundedEndTime)
+        lastStopTime = max(lastStopTime, endTime)
         save()
 
         // Only register if something actually changed.
@@ -578,8 +587,9 @@ class AppManager: NSObject {
 
     @discardableResult
     func addNewTask(description: String, startTime: Date, endTime: Date? = nil, isActive: Bool = false, undoManager: UndoManager? = nil) -> Task {
-        let newTask = Task(taskDescription: description, startTime: startTime, isActive: false)
-        newTask.endTime = endTime
+        let (sanitizedStart, sanitizedEnd) = sanitizedTimes(start: startTime, end: endTime)
+        let newTask = Task(taskDescription: description, startTime: sanitizedStart, isActive: false)
+        newTask.endTime = sanitizedEnd
         modelContext.insert(newTask)
         save()
 
@@ -633,9 +643,10 @@ class AppManager: NSObject {
         
         let shouldBecomeActive = (endTime == nil)
         
+        let (sanitizedStart, sanitizedEnd) = sanitizedTimes(start: startTime, end: endTime)
         // Update basic fields but keep inactive if we need to ask
-        task.startTime = startTime
-        task.endTime = endTime
+        task.startTime = sanitizedStart
+        task.endTime = sanitizedEnd
         task.taskDescription = description
         
         if shouldBecomeActive && !task.isActive {
@@ -651,7 +662,7 @@ class AppManager: NSObject {
                 self.save()
             }, onCancel: { [weak self] in
                 guard let self else { return }
-                before.apply(to: task)
+                self.applySnapshot(before, to: task)
                 self.save()
             })
         } else {
@@ -675,13 +686,14 @@ class AppManager: NSObject {
     }
     
     func duplicateTask(_ task: Task, from location: PopoverLocation, undoManager: UndoManager? = nil) {
+        let (sanitizedStart, sanitizedEnd) = sanitizedTimes(start: task.startTime, end: task.endTime)
         let newTask = Task(
             taskDescription: task.taskDescription,
-            startTime: task.startTime,
+            startTime: sanitizedStart,
             isActive: false
         )
         // For active tasks, use current time as end time to preserve duration
-        newTask.endTime = task.isActive ? Date() : task.endTime
+        newTask.endTime = task.isActive ? sanitizedStartTime(Date()) : sanitizedEnd
         modelContext.insert(newTask)
         save()
 
@@ -706,8 +718,8 @@ class AppManager: NSObject {
     }
 
     func splitTask(_ task: Task, from location: PopoverLocation, undoManager: UndoManager? = nil) {
-        let effectiveEndTime = task.isActive ? Date() : (task.endTime ?? Date())
-        let midpoint = task.startTime.addingTimeInterval(effectiveEndTime.timeIntervalSince(task.startTime) / 2)
+        let effectiveEndTime = task.isActive ? sanitizedStartTime(Date()) : (task.endTime ?? sanitizedStartTime(Date()))
+        let midpoint = sanitizedStartTime(task.startTime.addingTimeInterval(effectiveEndTime.timeIntervalSince(task.startTime) / 2))
 
         // Store original task's start time for undo
         let originalStartTime = task.startTime
@@ -716,7 +728,7 @@ class AppManager: NSObject {
         // Create new task for the first half
         let newTask = Task(
             taskDescription: task.taskDescription,
-            startTime: task.startTime,
+            startTime: sanitizedStartTime(task.startTime),
             isActive: false
         )
         newTask.endTime = midpoint
@@ -760,7 +772,7 @@ class AppManager: NSObject {
         // Restore original task's start time
         if let originalTask = fetchTask(id: originalTaskId) {
             let currentStartTime = originalTask.startTime
-            originalTask.startTime = originalStartTime
+            originalTask.startTime = sanitizedStartTime(originalStartTime)
             save()
 
             // Register redo
@@ -782,19 +794,20 @@ class AppManager: NSObject {
 
     private func redoSplitTask(newTaskSnapshot: TaskSnapshot, originalTaskId: UUID, splitStartTime: Date, undoManager: UndoManager?) {
         // Recreate the split task
+        let (sanitizedStart, sanitizedEnd) = sanitizedTimes(start: newTaskSnapshot.startTime, end: newTaskSnapshot.endTime)
         let newTask = Task(
             taskDescription: newTaskSnapshot.taskDescription,
-            startTime: newTaskSnapshot.startTime,
+            startTime: sanitizedStart,
             isActive: newTaskSnapshot.isActive
         )
         newTask.id = newTaskSnapshot.id
-        newTask.endTime = newTaskSnapshot.endTime
+        newTask.endTime = sanitizedEnd
         modelContext.insert(newTask)
 
         // Update original task's start time back to midpoint
         if let originalTask = fetchTask(id: originalTaskId) {
             let originalStartTime = originalTask.startTime
-            originalTask.startTime = splitStartTime
+            originalTask.startTime = sanitizedStartTime(splitStartTime)
             save()
 
             // Register undo
@@ -845,9 +858,10 @@ class AppManager: NSObject {
         if snapshot.isActive {
             enforceSingleActiveTask()
         }
-        let restored = Task(taskDescription: snapshot.taskDescription, startTime: snapshot.startTime, isActive: snapshot.isActive)
+        let (sanitizedStart, sanitizedEnd) = sanitizedTimes(start: snapshot.startTime, end: snapshot.endTime)
+        let restored = Task(taskDescription: snapshot.taskDescription, startTime: sanitizedStart, isActive: snapshot.isActive)
         restored.id = snapshot.id
-        restored.endTime = snapshot.endTime
+        restored.endTime = sanitizedEnd
         modelContext.insert(restored)
         save()
 

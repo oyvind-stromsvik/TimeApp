@@ -19,8 +19,8 @@ struct TaskLayoutView: View {
 
     var body: some View {
         let tick = currentTick // Capture tick to create dependency
-        let referenceTime = Date() // Use consistent time for layout calculations
-        let groupedTasks = calculateHorizontalLayout(at: referenceTime)
+        let referenceTime = tick == .distantPast ? Date() : tick
+        let groupedTasks = calculateHorizontalLayout(at: referenceTime, tick: tick)
 
         GeometryReader { geo in
             ZStack(alignment: .topLeading) {
@@ -69,11 +69,23 @@ struct TaskLayoutView: View {
         let offsetXPercent: CGFloat
     }
 
-    private func calculateHorizontalLayout(at referenceTime: Date) -> [TaskLayout] {
+    private func calculateHorizontalLayout(at referenceTime: Date, tick: Date) -> [TaskLayout] {
         guard !tasks.isEmpty else { return [] }
 
         var layouts: [TaskLayout] = []
         var processedIds: Set<UUID> = []
+        var rangeCache: [UUID: (start: CGFloat, end: CGFloat)] = [:]
+
+        func visualRange(for task: Task) -> (start: CGFloat, end: CGFloat) {
+            if let cached = rangeCache[task.id] {
+                return cached
+            }
+            let startY = calculateY(for: task)
+            let height = calculateHeight(for: task, at: tick)
+            let range = (start: startY, end: startY + height)
+            rangeCache[task.id] = range
+            return range
+        }
 
         for task in tasks {
             if processedIds.contains(task.id) { continue }
@@ -84,24 +96,13 @@ struct TaskLayoutView: View {
                 changed = false
                 for other in tasks {
                     if !processedIds.contains(other.id) && !group.contains(where: { $0.id == other.id }) {
-                        // Check for overlaps using resolved params
-                        let taskParams = manager.resolveParams(for: task)
-                        let otherParams = manager.resolveParams(for: other)
-                        
-                        // We need a temporary overlap check that respects the preview params
-                        // Since Task.overlaps isn't easily mockable without changing the Task model,
-                        // let's do a basic range check here using the resolved params.
-                        let taskStart = taskParams.startTime
-                        let taskEnd = taskParams.isActive 
-                            ? referenceTime // Active tasks effectively end at 'now' for overlap purposes in layout
-                            : (taskParams.endTime ?? Date.distantFuture)
-                        
-                        let otherStart = otherParams.startTime
-                        let otherEnd = otherParams.isActive 
-                            ? referenceTime
-                            : (otherParams.endTime ?? Date.distantFuture)
+                        let otherRange = visualRange(for: other)
+                        let overlapsGroup = group.contains { existing in
+                            let existingRange = visualRange(for: existing)
+                            return existingRange.start < otherRange.end && otherRange.start < existingRange.end
+                        }
 
-                        if taskStart < otherEnd && otherStart < taskEnd {
+                        if overlapsGroup {
                             group.append(other)
                             changed = true
                         }
@@ -117,18 +118,13 @@ struct TaskLayoutView: View {
             var columns: [[Task]] = []
             for item in group {
                 var assigned = false
-                let itemParams = manager.resolveParams(for: item)
-                let itemStart = itemParams.startTime
-                let itemEnd = itemParams.isActive ? referenceTime : (itemParams.endTime ?? Date.distantFuture)
+                let itemRange = visualRange(for: item)
 
                 for (index, col) in columns.enumerated() {
                     // Check if item overlaps with any task in this column
                     let overlaps = col.contains { existing in
-                        let existingParams = manager.resolveParams(for: existing)
-                        let existingStart = existingParams.startTime
-                        let existingEnd = existingParams.isActive ? referenceTime : (existingParams.endTime ?? Date.distantFuture)
-                        
-                        return itemStart < existingEnd && existingStart < itemEnd
+                        let existingRange = visualRange(for: existing)
+                        return itemRange.start < existingRange.end && existingRange.start < itemRange.end
                     }
                     
                     if !overlaps {
