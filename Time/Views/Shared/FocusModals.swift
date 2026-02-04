@@ -2,7 +2,6 @@ import SwiftUI
 
 private struct FocusModalLayout<Actions: View>: View {
     let title: String
-    let message: String
     let detail: String?
     let systemImage: String
     let accent: Color
@@ -24,12 +23,6 @@ private struct FocusModalLayout<Actions: View>: View {
                     Text(title)
                         .font(.system(size: 20, weight: .semibold))
                         .foregroundStyle(AppTheme.Colors.textPrimary)
-
-                    Text(message)
-                        .font(.system(size: AppTheme.Typography.callout))
-                        .foregroundStyle(AppTheme.Colors.textPrimary)
-                        .multilineTextAlignment(.center)
-                        .fixedSize(horizontal: false, vertical: true)
                 }
             }
 
@@ -56,13 +49,14 @@ private struct FocusModalLayout<Actions: View>: View {
 
 struct IdleAlertModalView: View {
     let idleDuration: TimeInterval
+    let idleStartTime: Date?
     let onDiscard: () -> Void
     let onKeep: () -> Void
 
     var body: some View {
+        let idleStartText = idleStartTime.map(formatIdleStartTime) ?? "an unknown time"
         FocusModalLayout(
-            title: "You Have Been Idle",
-            message: "Do you want to discard your idle time or keep it?",
+            title: "You have been idle since \(idleStartText)",
             detail: formattedIdleDuration(idleDuration),
             systemImage: "clock",
             accent: AppTheme.Colors.destructive
@@ -81,19 +75,15 @@ struct IdleAlertModalView: View {
     }
 
     private func formattedIdleDuration(_ duration: TimeInterval) -> String {
-        let totalMinutes = max(1, Int(round(duration / 60)))
-        let hours = totalMinutes / 60
-        let minutes = totalMinutes % 60
+        "Idle duration: \(Task.formatDuration(duration))"
+    }
 
-        if hours == 0 {
-            return "\(totalMinutes) min idle"
-        }
-
-        if minutes == 0 {
-            return "\(hours) hr idle"
-        }
-
-        return "\(hours) hr \(minutes) min idle"
+    private func formatIdleStartTime(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.locale = .current
+        formatter.dateStyle = .none
+        formatter.timeStyle = .short
+        return formatter.string(from: date)
     }
 }
 
@@ -102,13 +92,12 @@ struct NoActiveTasksModalView: View {
 
     var body: some View {
         FocusModalLayout(
-            title: "No Active Tasks",
-            message: "Nothing is currently tracking time. That's no good and you know it.",
+            title: "Don't forget to track your time",
             detail: nil,
             systemImage: "timer",
             accent: AppTheme.Colors.accent
         ) {
-            Button("Yes, I do") {
+            Button("Dismiss") {
                 onDismiss()
             }
             .buttonStyle(AppPrimaryButtonStyle())
@@ -123,8 +112,7 @@ struct TrackingCheckModalView: View {
 
     var body: some View {
         FocusModalLayout(
-            title: "Tracking Check-In",
-            message: "Are you still working on this task?",
+            title: "Are you still working on this task?",
             detail: nil,
             systemImage: "questionmark.circle",
             accent: AppTheme.Colors.accent
@@ -144,5 +132,5 @@ struct TrackingCheckModalView: View {
 }
 
 #Preview {
-    IdleAlertModalView(idleDuration: 900, onDiscard: {}, onKeep: {})
+    IdleAlertModalView(idleDuration: 900, idleStartTime: Date().addingTimeInterval(-900), onDiscard: {}, onKeep: {})
 }

@@ -15,10 +15,12 @@ class AppManager: NSObject {
     private var lastIdleAlert: Date = Date()
     private var lastNoActiveTasksAlert: Date = Date()
     private var lastTrackingCheckAlert: Date = Date()
+    private var lastStopTime: Date = .distantPast
 
     private var idleStart: Date?
     private var isIdleFrozen: Bool = false
     var idleDuration: TimeInterval = 0
+    var idleStartTime: Date? { idleStart }
 
     enum FocusModal: String, Identifiable, Equatable {
         case idle
@@ -148,6 +150,7 @@ class AppManager: NSObject {
              "enableIdleDetection": true,
              "enableTrackingCheck": false,
              "trackingCheckInterval": 1800.0,
+             "menuBarDurationMode": MenuBarDurationMode.activeOnly.rawValue,
              "sidebarWidth": AppTheme.sidebarDefaultWidth,
              "timeStepMinutes": 5,
              "defaultNewTaskDuration": 1800.0
@@ -270,6 +273,28 @@ class AppManager: NSObject {
         save()
     }
 
+    private func resetTrackingCheckTimer() {
+        lastTrackingCheckAlert = Date()
+    }
+
+    private func roundedUpToMinute(_ date: Date) -> Date {
+        let seconds = date.timeIntervalSinceReferenceDate
+        let roundedSeconds = ceil(seconds / 60.0) * 60.0
+        return Date(timeIntervalSinceReferenceDate: roundedSeconds)
+    }
+
+    private func roundedDownToMinute(_ date: Date) -> Date {
+        let seconds = date.timeIntervalSinceReferenceDate
+        let roundedSeconds = floor(seconds / 60.0) * 60.0
+        return Date(timeIntervalSinceReferenceDate: roundedSeconds)
+    }
+
+    private func snappedStartTimeForNewActiveTask(_ startTime: Date) -> Date {
+        let roundedStart = roundedDownToMinute(startTime)
+        guard !allowSimultaneousTasks else { return roundedStart }
+        return max(roundedStart, lastStopTime)
+    }
+
     func keepIdleTime() {
         resetIdleState()
         focusModal = nil
@@ -347,6 +372,36 @@ class AppManager: NSObject {
     var activeTasks: [Task] {
         let descriptor = FetchDescriptor<Task>(predicate: #Predicate { $0.isActive })
         return (try? modelContext.fetch(descriptor)) ?? []
+    }
+
+    func totalDurationForTasks(named description: String) -> TimeInterval {
+        let predicate = #Predicate<Task> { task in
+            task.taskDescription == description
+        }
+        let descriptor = FetchDescriptor<Task>(predicate: predicate)
+        let tasks = (try? modelContext.fetch(descriptor)) ?? []
+        return tasks.reduce(0) { $0 + $1.duration }
+    }
+
+    func totalDurationForTasks(named description: String, on day: Date) -> TimeInterval {
+        let predicate = #Predicate<Task> { task in
+            task.taskDescription == description
+        }
+        let descriptor = FetchDescriptor<Task>(predicate: predicate)
+        let tasks = (try? modelContext.fetch(descriptor)) ?? []
+
+        let calendar = Calendar.current
+        let dayStart = calendar.startOfDay(for: day)
+        let dayEnd = calendar.date(byAdding: .day, value: 1, to: dayStart) ?? dayStart
+        let now = Date()
+
+        return tasks.reduce(0) { total, task in
+            let taskEnd = task.endTime ?? now
+            let overlapStart = max(task.startTime, dayStart)
+            let overlapEnd = min(taskEnd, dayEnd)
+            let overlap = max(0, overlapEnd.timeIntervalSince(overlapStart))
+            return total + overlap
+        }
     }
 
     func stopAllActiveTasks() {
@@ -505,7 +560,10 @@ class AppManager: NSObject {
 
     func stopTask(_ task: Task, undoManager: UndoManager? = nil) {
         let before = TaskSnapshot(task)
-        task.stop()
+        let roundedEndTime = roundedUpToMinute(Date())
+        task.endTime = roundedEndTime
+        task.isActive = false
+        lastStopTime = max(lastStopTime, roundedEndTime)
         save()
 
         // Only register if something actually changed.
@@ -536,7 +594,9 @@ class AppManager: NSObject {
         if isActive {
             handleActiveTaskConflict(action: { [weak self] in
                 guard let self else { return }
+                newTask.startTime = self.snappedStartTimeForNewActiveTask(newTask.startTime)
                 newTask.isActive = true
+                self.resetTrackingCheckTimer()
                 self.save()
             }, onCancel: { [weak self] in
                 guard let self else { return }
@@ -569,6 +629,7 @@ class AppManager: NSObject {
 
     func updateTask(_ task: Task, startTime: Date, endTime: Date?, description: String, undoManager: UndoManager? = nil) {
         let before = TaskSnapshot(task)
+        let wasActive = task.isActive
         
         let shouldBecomeActive = (endTime == nil)
         
@@ -584,7 +645,9 @@ class AppManager: NSObject {
             
             handleActiveTaskConflict(action: { [weak self] in
                 guard let self else { return }
+                task.startTime = self.snappedStartTimeForNewActiveTask(task.startTime)
                 task.isActive = true
+                self.resetTrackingCheckTimer()
                 self.save()
             }, onCancel: { [weak self] in
                 guard let self else { return }
@@ -593,7 +656,14 @@ class AppManager: NSObject {
             })
         } else {
             task.isActive = (endTime == nil)
+            if task.isActive {
+                task.startTime = snappedStartTimeForNewActiveTask(task.startTime)
+            }
             save()
+
+            if !wasActive && task.isActive {
+                resetTrackingCheckTimer()
+            }
         }
 
         let after = TaskSnapshot(task)

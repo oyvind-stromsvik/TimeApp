@@ -163,6 +163,7 @@ struct ContentView: View {
             case .idle:
                 IdleAlertModalView(
                     idleDuration: manager.idleDuration,
+                    idleStartTime: manager.idleStartTime,
                     onDiscard: { manager.discardIdleTimeAndContinue() },
                     onKeep: { manager.keepIdleTime() }
                 )

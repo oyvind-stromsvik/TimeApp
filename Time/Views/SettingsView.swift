@@ -20,6 +20,7 @@ struct SettingsView: View {
     @AppStorage("appearanceMode") private var appearanceMode: String = AppearanceMode.system.rawValue
     @AppStorage("timeStepMinutes") private var timeStepMinutes: Int = 5
     @AppStorage("defaultNewTaskDuration") private var defaultNewTaskDuration: Double = 1800
+    @AppStorage("menuBarDurationMode") private var menuBarDurationMode: String = MenuBarDurationMode.activeOnly.rawValue
     
     var body: some View {
         Form {
@@ -83,6 +84,14 @@ struct SettingsView: View {
                     Toggle("Ask to stop active tasks", isOn: $askToStopActiveTasks)
                         .font(.body)
                         .padding(.leading, AppTheme.Spacing.lg)
+                }
+            }
+
+            Section("Menu Bar") {
+                Picker("Duration Display", selection: $menuBarDurationMode) {
+                    ForEach(MenuBarDurationMode.allCases) { mode in
+                        Text(mode.label).tag(mode.rawValue)
+                    }
                 }
             }
 
