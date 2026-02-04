@@ -55,7 +55,7 @@ struct SidebarView: View {
 
     private var tasksHeaderTitle: String {
         if isViewingToday {
-            return "TODAY'S TASKS"
+            return "TODAY"
         } else {
             let formatter = DateFormatter()
             formatter.dateFormat = "MMM d"
