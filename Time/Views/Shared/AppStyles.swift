@@ -119,7 +119,7 @@ struct AppSecondaryButtonStyle: ButtonStyle {
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .foregroundColor(.white)
+            .foregroundColor(.black)
             .padding(.vertical, 10)
             .padding(.horizontal, 20)
             .background(AppTheme.Gradients.secondaryGradient)
