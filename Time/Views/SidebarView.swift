@@ -10,6 +10,7 @@ struct SidebarView: View {
     @Query(filter: #Predicate<Task> { $0.isActive == true }, sort: \Task.startTime) private var activeTasks: [Task]
     @Query(sort: \Task.startTime, order: .reverse) private var allTasks: [Task]
     @State private var newTaskDescription = ""
+    @State private var expandedTaskGroups: Set<String> = []
 
     private var selectedDayTasks: [Task] {
         let calendar = Calendar.current
@@ -93,8 +94,9 @@ struct SidebarView: View {
                 .buttonStyle(.plain)
             }
             .padding(.horizontal, AppTheme.Spacing.lg)
-            .padding(.vertical, AppTheme.Spacing.md)
+            .padding(.vertical, AppTheme.Spacing.sm)
             .background(.regularMaterial)
+            .overlay(alignment: .top) { Divider() }
             .overlay(alignment: .bottom) { Divider() }
 
             ScrollViewReader { proxy in
@@ -137,7 +139,24 @@ struct SidebarView: View {
                 Section {
                     ForEach(sortedTaskGroups) { group in
                         if group.tasks.count > 1 {
-                            TaskStackView(tasks: group.tasks)
+                            TaskStackHeader(
+                                tasks: group.tasks,
+                                isExpanded: Binding(
+                                    get: { expandedTaskGroups.contains(group.name) },
+                                    set: { expanded in
+                                        if expanded {
+                                            expandedTaskGroups.insert(group.name)
+                                        } else {
+                                            expandedTaskGroups.remove(group.name)
+                                        }
+                                    }
+                                )
+                            )
+                            if expandedTaskGroups.contains(group.name) {
+                                ForEach(group.tasks) { task in
+                                    CompletedTaskRow(task: task, isInStack: true)
+                                }
+                            }
                         } else if let task = group.tasks.first {
                             CompletedTaskRow(task: task)
                         }
@@ -379,6 +398,27 @@ private struct TaskInlineEditor<DurationLeading: View>: View {
     }
 }
 
+private enum SidebarTimeFormatter {
+    static let shared: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.locale = .current
+        formatter.dateStyle = .none
+        formatter.timeStyle = .short
+        return formatter
+    }()
+}
+
+private func sidebarTimeRangeText(start: Date, end: Date?, isActive: Bool) -> String {
+    let startText = SidebarTimeFormatter.shared.string(from: start)
+    let endText: String
+    if isActive || end == nil {
+        endText = "Now"
+    } else {
+        endText = SidebarTimeFormatter.shared.string(from: end ?? start)
+    }
+    return "\(startText) – \(endText)"
+}
+
 /// An active task in the sidebar.
 struct ActiveTaskRow: View {
     @Bindable var task: Task
@@ -390,18 +430,34 @@ struct ActiveTaskRow: View {
         manager.popoverLocation == .sidebar(taskID: task.id)
     }
 
+    private var timeRangeText: String {
+        let params = manager.resolveParams(for: task)
+        return sidebarTimeRangeText(
+            start: params.startTime,
+            end: params.endTime,
+            isActive: params.isActive
+        )
+    }
+
     var body: some View {
         HStack(spacing: AppTheme.Spacing.xl) {
-            TaskInlineEditor(
-                task: task,
-                durationColor: AppTheme.Colors.activeTask,
-                durationFont: .system(size: AppTheme.Typography.body, weight: .medium, design: .monospaced)
-            ) {
-                Circle()
-                    .fill(AppTheme.Colors.activeTask)
-                    .frame(width: 6, height: 6)
-                    .symbolEffect(.pulse, value: manager.lastTick)
-                    .offset(x: 1)
+            VStack(alignment: .leading, spacing: AppTheme.Spacing.xxs) {
+                TaskInlineEditor(
+                    task: task,
+                    durationColor: AppTheme.Colors.activeTask,
+                    durationFont: .system(size: AppTheme.Typography.body, weight: .medium, design: .default)
+                ) {
+                    Circle()
+                        .fill(AppTheme.Colors.activeTask)
+                        .frame(width: 6, height: 6)
+                        .symbolEffect(.pulse, value: manager.lastTick)
+                        .offset(x: 1)
+                }
+
+                Text(timeRangeText)
+                    .font(.system(size: AppTheme.Typography.body, weight: .medium, design: .default))
+                    .foregroundStyle(AppTheme.Colors.textSecondary)
+                    .padding(.horizontal, 3)
             }
 
             Spacer()
@@ -455,6 +511,13 @@ struct ActiveTaskRow: View {
             EditTaskView(task: task, manager: manager)
                 .presentationCompactAdaptation(.none)
         }
+        .onHover { hovering in
+            if hovering {
+                manager.hoveredTaskID = task.id
+            } else if manager.hoveredTaskID == task.id {
+                manager.hoveredTaskID = nil
+            }
+        }
         .contextMenu {
             Button("Edit") {
                 manager.openPopover(for: task, from: .sidebar(taskID: task.id))
@@ -467,12 +530,12 @@ struct ActiveTaskRow: View {
 }
 
 /// A stack of tasks with the same name that can be expanded/collapsed.
-struct TaskStackView: View {
+struct TaskStackHeader: View {
     let tasks: [Task]
+    @Binding var isExpanded: Bool
 
     @Environment(AppManager.self) private var manager
     @Environment(\.undoManager) private var undoManager
-    @State private var isExpanded = false
     @State private var isHovering = false
     @State private var isArrowHovering = false
 
@@ -480,118 +543,123 @@ struct TaskStackView: View {
         tasks.reduce(0) { $0 + $1.duration }
     }
 
+    private var timeRangeText: String {
+        let params = tasks.map { manager.resolveParams(for: $0) }
+        guard let start = params.map(\.startTime).min() else { return "" }
+        let end = params.map { $0.endTime ?? $0.startTime }.max()
+        let isActive = params.contains { $0.isActive }
+        return sidebarTimeRangeText(start: start, end: end, isActive: isActive)
+    }
+
     var body: some View {
-        VStack(spacing: 0) {
-            // Stack header (collapsed view)
-            HStack(spacing: AppTheme.Spacing.xl) {
-                // Expand/collapse button
+        HStack(spacing: AppTheme.Spacing.xl) {
+            // Expand/collapse button
+            Button {
+                isExpanded.toggle()
+            } label: {
+                ZStack {
+                    Circle()
+                        .fill(isArrowHovering ? AppTheme.Colors.tertiaryFill : Color.clear)
+                        .frame(width: 20, height: 20)
+
+                    Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
+                        .font(.system(size: 9, weight: .semibold))
+                        .foregroundColor(AppTheme.Colors.textSecondary)
+                }
+                .frame(width: 24, height: 24)
+                .contentShape(Rectangle())
+                .cursor(.pointingHand)
+            }
+            .buttonStyle(.plain)
+            .onHover { hovering in
+                withAnimation(.easeInOut(duration: 0.1)) {
+                    isArrowHovering = hovering
+                }
+            }
+
+            VStack(alignment: .leading, spacing: AppTheme.Spacing.itemSpacing) {
+                HStack {
+                    Text(tasks[0].taskDescription)
+                        .font(AppTheme.Typography.rowPrimaryText())
+                        .foregroundStyle(AppTheme.Colors.textPrimary)
+
+                    // Stack count badge
+                    Text("\(tasks.count)")
+                        .font(.system(size: 9, weight: .semibold))
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 5)
+                        .padding(.vertical, 2)
+                        .background(
+                            Capsule()
+                                .fill(AppTheme.Colors.textSecondary.opacity(0.7))
+                        )
+                }
+
+                Text(Task.formatDuration(totalDuration))
+                    .font(.system(size: AppTheme.Typography.body, weight: .medium, design: .default))
+                    .foregroundColor(AppTheme.Colors.textSecondary)
+
+                Text(timeRangeText)
+                    .font(.system(size: AppTheme.Typography.body, weight: .medium, design: .default))
+                    .foregroundStyle(AppTheme.Colors.textSecondary)
+            }
+
+            Spacer()
+
+            if isHovering && !isExpanded {
                 Button {
-                    isExpanded.toggle()
+                    manager.addNewTask(
+                        description: tasks[0].taskDescription,
+                        startTime: Date(),
+                        endTime: nil,
+                        isActive: true,
+                        undoManager: undoManager
+                    )
                 } label: {
-                    ZStack {
-                        Circle()
-                            .fill(isArrowHovering ? AppTheme.Colors.tertiaryFill : Color.clear)
-                            .frame(width: 20, height: 20)
-                        
-                        Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
-                            .font(.system(size: 9, weight: .semibold))
-                            .foregroundColor(AppTheme.Colors.textSecondary)
-                    }
-                    .frame(width: 24, height: 24)
-                    .contentShape(Rectangle())
+                    AppCircleIcon(
+                        systemName: "play.fill",
+                        size: 26,
+                        iconSize: 10,
+                        background: AppTheme.Gradients.accentGradient
+                    )
                     .cursor(.pointingHand)
                 }
                 .buttonStyle(.plain)
-                .onHover { hovering in
-                    withAnimation(.easeInOut(duration: 0.1)) {
-                        isArrowHovering = hovering
-                    }
-                }
-
-                VStack(alignment: .leading, spacing: AppTheme.Spacing.itemSpacing) {
-                    HStack {
-                        Text(tasks[0].taskDescription)
-                            .font(AppTheme.Typography.rowPrimaryText())
-                            .foregroundStyle(AppTheme.Colors.textPrimary)
-
-                        // Stack count badge
-                        Text("\(tasks.count)")
-                            .font(.system(size: 9, weight: .semibold))
-                            .foregroundColor(.white)
-                            .padding(.horizontal, 5)
-                            .padding(.vertical, 2)
-                            .background(
-                                Capsule()
-                                    .fill(AppTheme.Colors.textSecondary.opacity(0.7))
-                            )
-                    }
-
-                    Text(Task.formatDuration(totalDuration))
-                        .font(.system(size: AppTheme.Typography.body, weight: .medium, design: .monospaced))
-                        .foregroundColor(AppTheme.Colors.textSecondary)
-                }
-
-                Spacer()
-
-                if isHovering && !isExpanded {
-                    Button {
-                        manager.addNewTask(
-                            description: tasks[0].taskDescription,
-                            startTime: Date(),
-                            endTime: nil,
-                            isActive: true,
-                            undoManager: undoManager
-                        )
-                    } label: {
-                        AppCircleIcon(
-                            systemName: "play.fill",
-                            size: 26,
-                            iconSize: 10,
-                            background: AppTheme.Gradients.accentGradient
-                        )
-                        .cursor(.pointingHand)
-                    }
-                    .buttonStyle(.plain)
-                }
             }
-            .padding(.vertical, AppTheme.Spacing.md)
-            .padding(.horizontal, AppTheme.Spacing.lg)
-            .background(
-                ZStack {
-                    // Card background
+        }
+        .padding(.vertical, AppTheme.Spacing.md)
+        .padding(.horizontal, AppTheme.Spacing.lg)
+        .background(
+            ZStack {
+                // Card background
+                RoundedRectangle(cornerRadius: AppTheme.CornerRadius.card)
+                    .fill(AppTheme.Colors.cardBackground)
+
+                // Stack effect - show multiple layers when collapsed
+                if !isExpanded {
                     RoundedRectangle(cornerRadius: AppTheme.CornerRadius.card)
                         .fill(AppTheme.Colors.cardBackground)
+                        .offset(x: 0, y: -2)
+                        .opacity(0.5)
 
-                    // Stack effect - show multiple layers when collapsed
-                    if !isExpanded {
-                        RoundedRectangle(cornerRadius: AppTheme.CornerRadius.card)
-                            .fill(AppTheme.Colors.cardBackground)
-                            .offset(x: 0, y: -2)
-                            .opacity(0.5)
-
-                        RoundedRectangle(cornerRadius: AppTheme.CornerRadius.card)
-                            .fill(AppTheme.Colors.cardBackground)
-                            .offset(x: 0, y: -4)
-                            .opacity(0.25)
-                    }
+                    RoundedRectangle(cornerRadius: AppTheme.CornerRadius.card)
+                        .fill(AppTheme.Colors.cardBackground)
+                        .offset(x: 0, y: -4)
+                        .opacity(0.25)
                 }
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: AppTheme.CornerRadius.card)
-                    .strokeBorder(AppTheme.Colors.separator.opacity(0.5), lineWidth: 0.5)
-            )
-            .appShadow(AppTheme.Shadows.soft)
-            .onHover { hovering in
-                isHovering = hovering
             }
-
-            // Expanded task list
-            if isExpanded {
-                VStack(spacing: 0) {
-                    ForEach(tasks) { task in
-                        CompletedTaskRow(task: task, isInStack: true)
-                    }
-                }
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: AppTheme.CornerRadius.card)
+                .strokeBorder(AppTheme.Colors.separator.opacity(0.5), lineWidth: 0.5)
+        )
+        .appShadow(AppTheme.Shadows.soft)
+        .onHover { hovering in
+            isHovering = hovering
+            if hovering {
+                manager.hoveredTaskDescription = tasks[0].taskDescription
+            } else if manager.hoveredTaskDescription == tasks[0].taskDescription {
+                manager.hoveredTaskDescription = nil
             }
         }
     }
@@ -610,15 +678,31 @@ struct CompletedTaskRow: View {
         manager.popoverLocation == .sidebar(taskID: task.id)
     }
 
+    private var timeRangeText: String {
+        let params = manager.resolveParams(for: task)
+        return sidebarTimeRangeText(
+            start: params.startTime,
+            end: params.endTime,
+            isActive: params.isActive
+        )
+    }
+
     var body: some View {
         HStack(spacing: AppTheme.Spacing.xl) {
-            TaskInlineEditor(
-                task: task,
-                durationColor: AppTheme.Colors.textSecondary,
-                durationFont: .system(size: AppTheme.Typography.body, weight: .medium, design: .monospaced),
-                durationLeadingSpacing: 0
-            ) {
-                EmptyView()
+            VStack(alignment: .leading, spacing: AppTheme.Spacing.xxs) {
+                TaskInlineEditor(
+                    task: task,
+                    durationColor: AppTheme.Colors.textSecondary,
+                    durationFont: .system(size: AppTheme.Typography.body, weight: .medium, design: .default),
+                    durationLeadingSpacing: 0
+                ) {
+                    EmptyView()
+                }
+
+                Text(timeRangeText)
+                    .font(.system(size: AppTheme.Typography.body, weight: .medium, design: .default))
+                    .foregroundStyle(AppTheme.Colors.textSecondary)
+                    .padding(.horizontal, 3)
             }
 
             Spacer()
@@ -678,6 +762,11 @@ struct CompletedTaskRow: View {
         .onHover { hovering in
             withAnimation(AppTheme.Animation.standard) {
                 isHovering = hovering
+            }
+            if hovering {
+                manager.hoveredTaskID = task.id
+            } else if manager.hoveredTaskID == task.id {
+                manager.hoveredTaskID = nil
             }
         }
         .contextMenu {

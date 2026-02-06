@@ -5,6 +5,7 @@ struct TaskBlock: View {
     @Bindable var task: Task
     let hourHeight: CGFloat
     let date: Date
+    let availableHeight: CGFloat
 
     @Environment(AppManager.self) private var manager
     @Environment(\.undoManager) private var undoManager
@@ -19,6 +20,16 @@ struct TaskBlock: View {
         manager.popoverLocation == .dayView(taskID: task.id)
     }
 
+    private var isHighlighted: Bool {
+        if let hoveredID = manager.hoveredTaskID {
+            return hoveredID == task.id
+        }
+        if let hoveredDescription = manager.hoveredTaskDescription {
+            return hoveredDescription == task.taskDescription
+        }
+        return false
+    }
+
     var body: some View {
         let params = manager.resolveParams(for: task)
         let tick = params.isActive ? manager.lastTick : .distantPast
@@ -27,7 +38,7 @@ struct TaskBlock: View {
         let isInteracting = isDragging || isResizing
 
         VStack(alignment: .leading, spacing: AppTheme.Spacing.xxs) {
-            TaskContent(task: task, tick: tick)
+            TaskContent(task: task, tick: tick, availableHeight: availableHeight)
         }
         .padding(.horizontal, AppTheme.Spacing.cardPaddingHorizontal)
         .padding(.vertical, AppTheme.Spacing.cardPaddingVertical)
@@ -64,10 +75,18 @@ struct TaskBlock: View {
                 }
                 .appShadow(isInteracting ? AppTheme.Shadows.active : (isHovering ? AppTheme.Shadows.floating : AppTheme.Shadows.soft))
         }
+        .overlay {
+            if isHighlighted {
+                RoundedRectangle(cornerRadius: AppTheme.CornerRadius.card, style: .continuous)
+                    .stroke(AppTheme.Colors.accent.opacity(0.9), lineWidth: 2)
+                    .shadow(color: AppTheme.Colors.accent.opacity(0.3), radius: 6, x: 0, y: 0)
+            }
+        }
         .scaleEffect(isInteracting ? 1.02 : (isHovering ? 1.01 : 1))
         .animation(AppTheme.Animation.standard, value: isHovering)
         .animation(AppTheme.Animation.standard, value: isSelected)
         .animation(AppTheme.Animation.standard, value: isInteracting)
+        .animation(AppTheme.Animation.standard, value: isHighlighted)
         .popover(
             isPresented: Binding(
                 get: { showingPopover },
@@ -219,6 +238,7 @@ struct TaskBlock: View {
 struct TaskContent: View {
     let task: Task
     let tick: Date
+    let availableHeight: CGFloat
 
     @Environment(AppManager.self) private var manager
 
@@ -237,13 +257,30 @@ struct TaskContent: View {
         return Task.formatDuration(duration)
     }
 
+    private var descriptionLineLimit: Int {
+        let descriptionLineHeight = lineHeight(
+            for: NSFont.systemFont(ofSize: AppTheme.Typography.bodyEmphasized)
+        )
+        let durationLineHeight = lineHeight(
+            for: NSFont.systemFont(ofSize: AppTheme.Typography.caption2, weight: .medium)
+        )
+        let availableContentHeight = availableHeight - (AppTheme.Spacing.cardPaddingVertical * 2)
+        let usableHeight = availableContentHeight - durationLineHeight - AppTheme.Spacing.xxs
+        let lines = Int(floor(usableHeight / descriptionLineHeight))
+        return max(1, lines)
+    }
+
+    private func lineHeight(for font: NSFont) -> CGFloat {
+        NSLayoutManager().defaultLineHeight(for: font)
+    }
+
     var body: some View {
         HStack(alignment: .top) {
             VStack(alignment: .leading, spacing: AppTheme.Spacing.xxs) {
                 Text(task.taskDescription)
                     .font(AppTheme.Typography.taskDescription())
                     .foregroundStyle(.primary)
-                    .lineLimit(2)
+                    .lineLimit(descriptionLineLimit)
                     .fixedSize(horizontal: false, vertical: true)
 
                 Text(formattedDuration)

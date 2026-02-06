@@ -8,6 +8,11 @@ struct ContentView: View {
     @State private var hourHeight: CGFloat = AppTheme.Timeline.defaultHourHeight
     @AppStorage("allowSimultaneousTasks") private var allowSimultaneousTasks: Bool = true
 
+    private var windowMinWidth: CGFloat {
+        let sidebarWidth = manager.isSidebarVisible ? max(manager.sidebarWidth, AppTheme.sidebarMinWidth) : 0
+        return AppTheme.mainViewMinWidth + sidebarWidth
+    }
+
     var body: some View {
         @Bindable var bindableManager = manager
 
@@ -30,10 +35,10 @@ struct ContentView: View {
                 Divider()
 
                 DayView(date: selectedDate, onDateChange: { selectedDate = $0 }, hourHeight: $hourHeight)
-                    .frame(minWidth: 100, idealWidth: AppTheme.mainWidth, maxWidth: .infinity)
+                    .frame(minWidth: AppTheme.mainViewMinWidth, maxWidth: .infinity)
             }
         }
-        .background(WindowTitleHider())
+        .background(WindowTitleHider(minWidth: windowMinWidth))
         .coordinateSpace(name: "contentArea")
         .toolbar {
             ToolbarItem(placement: .navigation) {
@@ -48,76 +53,9 @@ struct ContentView: View {
                 .padding(.top, 4)
                 .keyboardShortcut("0", modifiers: .command)
             }
-
-            ToolbarItem(placement: .principal) {
-                HStack {
-                    // Date Navigation
-                    HStack(spacing: 1) {
-                        Button {
-                            selectedDate = previousDay(from: selectedDate)
-                        } label: {
-                            Image(systemName: "chevron.left")
-                                .imageScale(.medium)
-                                .frame(width: 28, height: 26)
-                        }
-
-                        Divider().frame(height: AppTheme.Spacing.xxl)
-
-                        Button {
-                            selectedDate = Date()
-                        } label: {
-                            Text("Today")
-                                .font(AppTheme.Typography.rowPrimaryText())
-                                .frame(height: 26)
-                                .padding(.horizontal, AppTheme.Spacing.md)
-                        }
-
-                        Divider().frame(height: AppTheme.Spacing.xxl)
-
-                        Button {
-                            selectedDate = nextDay(from: selectedDate)
-                        } label: {
-                            Image(systemName: "chevron.right")
-                                .imageScale(.medium)
-                                .frame(width: 28, height: 26)
-                        }
-                    }
-                    .buttonStyle(.borderless)
-                    .background(RoundedRectangle(cornerRadius: AppTheme.CornerRadius.md).fill(Color.secondary.opacity(0.1)))
-
-                    Text(formattedDateForHeader(selectedDate))
-                        .font(.system(size: AppTheme.Typography.callout))
-                        .frame(minWidth: 120)
-
-                    // Zoom Controls
-                    HStack(spacing: AppTheme.Spacing.lg) {
-                        Button {
-                            withAnimation(AppTheme.Animation.standard) {
-                                hourHeight = max(AppTheme.Timeline.minHourHeight, hourHeight - AppTheme.Timeline.hourHeightStep)
-                            }
-                        } label: {
-                            Image(systemName: "minus.magnifyingglass")
-                        }
-                        .buttonStyle(.borderless)
-                        .disabled(hourHeight <= AppTheme.Timeline.minHourHeight)
-
-                        Slider(value: $hourHeight, in: AppTheme.Timeline.minHourHeight...AppTheme.Timeline.maxHourHeight)
-                            .frame(width: 80)
-                            .controlSize(.mini)
-
-                        Button {
-                            withAnimation(AppTheme.Animation.standard) {
-                                hourHeight = min(AppTheme.Timeline.maxHourHeight, hourHeight + AppTheme.Timeline.hourHeightStep)
-                            }
-                        } label: {
-                            Image(systemName: "plus.magnifyingglass")
-                        }
-                        .buttonStyle(.borderless)
-                        .disabled(hourHeight >= AppTheme.Timeline.maxHourHeight)
-                    }
-                }
-            }
         }
+        .toolbarBackground(.regularMaterial, for: .windowToolbar)
+        .toolbarBackground(.visible, for: .windowToolbar)
         .confirmationDialog(
             "Stop active tasks?",
             isPresented: $bindableManager.showStopConfirmation,
@@ -160,42 +98,82 @@ struct ContentView: View {
         }
     }
 
-    private func previousDay(from date: Date) -> Date {
-        Calendar.current.date(byAdding: .day, value: -1, to: date) ?? date
-    }
-
-    private func nextDay(from date: Date) -> Date {
-        Calendar.current.date(byAdding: .day, value: 1, to: date) ?? date
-    }
-
-    private func formattedDateForHeader(_ date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.locale = .current
-        formatter.setLocalizedDateFormatFromTemplate("EEE, MMM d")
-        return formatter.string(from: date)
-    }
 }
 
 private struct WindowTitleHider: NSViewRepresentable {
+    let minWidth: CGFloat
+
     func makeNSView(context: Context) -> NSView {
-        let view = NSView()
-        configureWindow(for: view)
-        return view
+        NSView()
     }
 
     func updateNSView(_ nsView: NSView, context: Context) {
-        configureWindow(for: nsView)
+        context.coordinator.update(window: nsView.window, minWidth: minWidth)
     }
 
-    private func configureWindow(for view: NSView) {
-        DispatchQueue.main.async {
-            guard let window = view.window else { return }
-            if window.titleVisibility != .hidden {
-                window.titleVisibility = .hidden
+    func makeCoordinator() -> Coordinator {
+        Coordinator()
+    }
+
+    final class Coordinator {
+        private weak var window: NSWindow?
+        private var observers: [NSObjectProtocol] = []
+        private var titleObservation: NSKeyValueObservation?
+        private var minWidth: CGFloat = 0
+
+        func update(window: NSWindow?, minWidth: CGFloat) {
+            guard let window else { return }
+            if window != self.window {
+                removeObservers()
+                self.window = window
+                self.minWidth = minWidth
+                addObservers(for: window)
             }
-            if window.title != "" {
-                window.title = ""
+            if self.minWidth != minWidth {
+                self.minWidth = minWidth
             }
+            apply(to: window, minWidth: minWidth)
+        }
+
+        private func addObservers(for window: NSWindow) {
+            let center = NotificationCenter.default
+            let applyHandler: (Notification) -> Void = { [weak self] _ in
+                guard let self, let window = self.window else { return }
+                self.apply(to: window, minWidth: self.minWidth)
+            }
+            observers.append(center.addObserver(forName: NSWindow.didUpdateNotification, object: window, queue: .main, using: applyHandler))
+            observers.append(center.addObserver(forName: NSWindow.didBecomeKeyNotification, object: window, queue: .main, using: applyHandler))
+            observers.append(center.addObserver(forName: NSWindow.didResizeNotification, object: window, queue: .main, using: applyHandler))
+
+            titleObservation = window.observe(\.title, options: [.new]) { [weak self] window, _ in
+                guard let self else { return }
+                self.apply(to: window, minWidth: self.minWidth)
+            }
+        }
+
+        private func apply(to window: NSWindow, minWidth: CGFloat) {
+            if window.contentMinSize.width != minWidth {
+                let contentMinSize = NSSize(width: minWidth, height: window.contentMinSize.height)
+                window.contentMinSize = contentMinSize
+                window.minSize = window.frameRect(forContentRect: NSRect(origin: .zero, size: contentMinSize)).size
+            }
+            window.toolbar?.showsBaselineSeparator = false
+            if window.toolbarStyle != .unified {
+                window.toolbarStyle = .unified
+            }
+        }
+
+        private func removeObservers() {
+            let center = NotificationCenter.default
+            for observer in observers {
+                center.removeObserver(observer)
+            }
+            observers.removeAll()
+            titleObservation = nil
+        }
+
+        deinit {
+            removeObservers()
         }
     }
 }

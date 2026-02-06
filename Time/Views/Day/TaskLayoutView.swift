@@ -4,6 +4,7 @@ struct TaskLayoutView: View {
     let tasks: [Task]
     let hourHeight: CGFloat
     let date: Date
+    let useMinimumHeight: Bool
     var topOffset: CGFloat = 0
 
     @Environment(AppManager.self) private var manager
@@ -25,12 +26,14 @@ struct TaskLayoutView: View {
         GeometryReader { geo in
             ZStack(alignment: .topLeading) {
                 ForEach(groupedTasks, id: \.task.id) { layout in
+                    let height = calculateHeight(for: layout.task, at: tick)
                     TaskBlock(
                         task: layout.task,
                         hourHeight: hourHeight,
-                        date: date
+                        date: date,
+                        availableHeight: height
                     )
-                    .frame(width: geo.size.width * layout.widthPercent, height: calculateHeight(for: layout.task, at: tick))
+                    .frame(width: geo.size.width * layout.widthPercent, height: height)
                     .offset(x: geo.size.width * layout.offsetXPercent, y: calculateY(for: layout.task))
                     .animation(AppTheme.Animation.standard, value: manager.selectedTask?.id)
                 }
@@ -60,7 +63,24 @@ struct TaskLayoutView: View {
                 duration = task.duration // Fallback
             }
         }
-        return max(AppTheme.Timeline.minTaskHeight, CGFloat(duration / 3600.0) * hourHeight)
+        let height = CGFloat(duration / 3600.0) * hourHeight
+        if useMinimumHeight {
+            return max(AppTheme.Timeline.minTaskHeight, height)
+        }
+        return max(0, height)
+    }
+
+    private func timeRange(for task: Task, at tick: Date) -> (start: TimeInterval, end: TimeInterval) {
+        let params = manager.resolveParams(for: task)
+        let start = params.startTime.timeIntervalSinceReferenceDate
+        let endDate = params.endTime ?? (params.isActive ? tick : params.startTime)
+        let end = endDate.timeIntervalSinceReferenceDate
+        return (start: start, end: max(start, end))
+    }
+
+    private func timeRangesOverlap(_ a: (start: TimeInterval, end: TimeInterval), _ b: (start: TimeInterval, end: TimeInterval)) -> Bool {
+        let epsilon: TimeInterval = 0.5
+        return a.start < (b.end - epsilon) && b.start < (a.end - epsilon)
     }
 
     private struct TaskLayout {
@@ -94,12 +114,17 @@ struct TaskLayoutView: View {
             var changed = true
             while changed {
                 changed = false
-                for other in tasks {
-                    if !processedIds.contains(other.id) && !group.contains(where: { $0.id == other.id }) {
-                        let otherRange = visualRange(for: other)
+            for other in tasks {
+                if !processedIds.contains(other.id) && !group.contains(where: { $0.id == other.id }) {
                         let overlapsGroup = group.contains { existing in
-                            let existingRange = visualRange(for: existing)
-                            return existingRange.start < otherRange.end && otherRange.start < existingRange.end
+                            if useMinimumHeight {
+                                let otherRange = visualRange(for: other)
+                                let existingRange = visualRange(for: existing)
+                                return existingRange.start < otherRange.end && otherRange.start < existingRange.end
+                            }
+                            let otherRange = timeRange(for: other, at: tick)
+                            let existingRange = timeRange(for: existing, at: tick)
+                            return timeRangesOverlap(existingRange, otherRange)
                         }
 
                         if overlapsGroup {
@@ -123,8 +148,13 @@ struct TaskLayoutView: View {
                 for (index, col) in columns.enumerated() {
                     // Check if item overlaps with any task in this column
                     let overlaps = col.contains { existing in
-                        let existingRange = visualRange(for: existing)
-                        return itemRange.start < existingRange.end && existingRange.start < itemRange.end
+                        if useMinimumHeight {
+                            let existingRange = visualRange(for: existing)
+                            return itemRange.start < existingRange.end && existingRange.start < itemRange.end
+                        }
+                        let existingRange = timeRange(for: existing, at: tick)
+                        let currentRange = timeRange(for: item, at: tick)
+                        return timeRangesOverlap(existingRange, currentRange)
                     }
                     
                     if !overlaps {

@@ -3,7 +3,7 @@ import AppKit
 
 struct AppTheme {
     static let cardCornerRadius: CGFloat = 5
-    static let mainWidth: CGFloat = 280
+    static let mainViewMinWidth: CGFloat = 360
 
     // Sidebar sizing
     static let sidebarDefaultWidth: CGFloat = 280
@@ -72,7 +72,7 @@ struct AppTheme {
         static let minTaskHeight: CGFloat = {
             let descriptionLineHeight = lineHeight(for: NSFont.systemFont(ofSize: Typography.bodyEmphasized))
             let durationLineHeight = lineHeight(for: NSFont.systemFont(ofSize: Typography.caption2, weight: .medium))
-            let contentHeight = (descriptionLineHeight * 2) + durationLineHeight + Spacing.xxs
+            let contentHeight = descriptionLineHeight + durationLineHeight + Spacing.xxs
             let paddingHeight = Spacing.cardPaddingVertical * 2
             return ceil(contentHeight + paddingHeight)
         }()

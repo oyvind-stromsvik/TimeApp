@@ -109,6 +109,8 @@ class AppManager: NSObject {
     var selectedTask: Task?
     var hasUnsavedChanges: Bool = false
     var showingDiscardAlert: Bool = false
+    var hoveredTaskID: UUID?
+    var hoveredTaskDescription: String?
 
     // MARK: - Popover State
     enum PopoverLocation: Equatable {
